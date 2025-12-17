@@ -1,92 +1,103 @@
-export async function onRequestPost({ request, env }) {
-  try {
-    const body = await request.json();
-    const userMessages = body.messages || [];
 
-    // ============================================
-    // ⭐ DITAMBAHKAN SYSTEM PROMPT OTOMATIS
-    // ============================================
-    const systemPrompt = {
-      role: "system",
-      content: `
-Anda adalah ZedAI, asisten resmi ZEDKalkulator.
-Jawaban Anda hanya boleh membahas:
-• aplikasi ZEDKalkulator, ZEDose, dan fitur-fiturnya
-• keperawatan, vital sign, tindakan dasar
-• perhitungan dosis obat, pengenceran, infus, ABL, EBV, MABL, KK, drip rate
+// ================================
+//  ZEDAI CHAT CLIENT (chat.js)
+// ================================
 
-Jika user bertanya di luar topik → jawab:
-"Maaf, saya hanya dapat menjawab pertanyaan terkait aplikasi ZEDKalkulator, keperawatan, atau perhitungan obat."
+// SYSTEM PROMPT (ZedAI versi hijau)
+const systemPrompt = {
+  role: "system",
+  content: `
+Anda adalah ZedAI, asisten cerdas yang dapat menjawab berbagai pertanyaan secara bebas dan variatif.
 
-Jika ada pertanyaan: "Siapa pembuat/pengembang/penyusun ZEDKalkulator?"
-→ Jawab: "Penyusun dan pengembang ZedKalkulator adalah Muhammad Khairul Zed, S.Kep.Ns."
+Anda memiliki keahlian khusus dalam:
+- Aplikasi ZEDKalkulator dan ZEDose
+- Perhitungan medis: dosis obat, pengenceran, infus, syringe pump, MABL, ABL, EBV, drop factor, dsb
+- Keperawatan dan tindakan dasar klinis
 
-Dilarang menjawab politik, gosip, hiburan, atau hal yang tidak relevan.
+⚡ Ketentuan Khusus:
+1. Jika user bertanya tentang aplikasi ZEDKalkulator:
+   - Berikan penjelasan yang detail, akurat, dan mudah dipahami.
+   - Bantu langkah-langkah penggunaan, fitur, menu, error, dan perhitungan.
+
+2. Jika user bertanya:
+   "Siapa pembuat/pengembang/penyusun ZEDKalkulator?"
+   → Jawab: "Penyusun dan pengembang ZedKalkulator adalah Muhammad Khairul Zed, S.Kep.Ns."
+
+3. Anda boleh menjawab topik umum lainnya (coding, teknologi, tutorial, hiburan ringan, dsb) secara bebas.
+
+4. Jika user menyinggung topik medis di luar kompetensi, beri jawaban aman & netral.
+
+Tujuan Anda: menjadi asisten yang ramah, fleksibel, namun sangat ahli jika menyangkut ZEDKalkulator.
 `
-    };
+};
 
-    // Gabungkan systemPrompt + pesan user
-    const messages = [systemPrompt, ...userMessages];
+// ==========================================
+//  
+//    FUNGSI MENGIRIM PESAN KE WORKER
+//
+// ==========================================
 
-    // ============================================
-    // ⛔ FILTER: Hanya izinkan topik tertentu
-    // ============================================
-    const userText = userMessages[userMessages.length - 1]?.content?.toLowerCase() || "";
-
-    const allowedKeywords = [
-      "zedkalkulator", "zedose", "zed ai", "kalkulator infus",
-      "syringe pump", "mabl", "abl", "ebv", "pengenceran obat",
-      "perawat", "keperawatan", "triage", "vital sign",
-      "tindakan keperawatan", "alat medis",
-      "dosis", "obat", "mg", "ml", "mcg",
-      "tetesan", "infus", "drip", "perhitungan medis", "konversi obat"
-    ];
-
-    if (!allowedKeywords.some(w => userText.includes(w))) {
-      return new Response(
-        JSON.stringify({
-          reply: "Maaf, saya hanya dapat menjawab pertanyaan terkait aplikasi ZEDKalkulator, keperawatan, atau perhitungan obat."
-        }),
-        { headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    // ============================================
-    // GROQ API REQUEST
-    // ============================================
-    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+async function sendMessageToAI(userMessage) {
+  try {
+    const res = await fetch("/api/chat", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${env.GROQ_API_KEY}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
-        messages,
-        temperature: 0.7,
-        stream: false
+        messages: [
+          systemPrompt,
+          { role: "user", content: userMessage }
+        ]
       })
     });
 
-    if (!groqRes.ok) {
-      const errText = await groqRes.text();
-      return new Response(JSON.stringify({ error: "Groq API error", detail: errText }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" }
-      });
-    }
+    const data = await res.json();
 
-    const groqData = await groqRes.json();
-    const reply = groqData?.choices?.[0]?.message?.content ?? "";
+    if (data.reply) return data.reply;
+    if (data.error) return "Terjadi kesalahan: " + data.error;
 
-    return new Response(JSON.stringify({ reply }), {
-      headers: { "Content-Type": "application/json" }
-    });
+    return "Tidak ada balasan dari server.";
 
   } catch (err) {
-    return new Response(
-      JSON.stringify({ error: "Server error", detail: String(err) }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
-    );
+    return "Gagal menghubungi server: " + err.message;
   }
 }
+
+
+// ==========================================
+//
+//     HANDLER UNTUK UI CHAT DI WEBSITE
+//
+// ==========================================
+
+document.addEventListener("DOMContentLoaded", () => {
+  const input = document.getElementById("chat-input");
+  const sendBtn = document.getElementById("chat-send");
+  const chatBox = document.getElementById("chat-box");
+
+  function addBubble(text, sender) {
+    const div = document.createElement("div");
+    div.className = sender === "user" ? "bubble user" : "bubble ai";
+    div.textContent = text;
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  async function handleSend() {
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    addBubble(msg, "user");
+    input.value = "";
+
+    const reply = await sendMessageToAI(msg);
+    addBubble(reply, "ai");
+  }
+
+  sendBtn.addEventListener("click", handleSend);
+
+  input.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") handleSend();
+  });
+});
