@@ -1,35 +1,68 @@
-
 export async function onRequestPost({ request, env }) {
   try {
     const body = await request.json();
     const messages = body.messages || [];
 
     // ============================================
-    //   FILTER: Hanya izinkan topik tertentu
+    //   FILTER: Hanya izinkan topik tertentu (diperluas)
     // ============================================
     const userText = messages[messages.length - 1]?.content?.toLowerCase() || "";
 
     const allowedKeywords = [
+      // Aplikasi
       "zedkalkulator", "zedose", "zed ai", "kalkulator infus",
       "syringe pump", "mabl", "abl", "ebv", "pengenceran obat",
-      "perawat", "keperawatan", "triage", "vital sign",
-      "tindakan keperawatan", "alat medis",
-      "dosis", "obat", "mg", "ml", "mcg", "tetesan",
-      "infus", "drip", "perhitungan medis", "konversi obat" "asuhan keperawatan" "tindakan keperawatan" "diagnosa keperawatan"
+
+      // Keperawatan
+      "perawat", "keperawatan", "asuhan keperawatan",
+      "diagnosa keperawatan", "intervensi keperawatan",
+      "tindakan keperawatan", "catatan keperawatan",
+
+      // Kesehatan & medis umum
+      "kesehatan", "medis", "kedokteran", "patofisiologi",
+      "tanda gejala", "penyakit", "pemeriksaan fisik",
+
+      // Unit pelayanan
+      "igd", "icu", "nicu", "picu", "rawat inap", "rawat jalan",
+
+      // Vital sign
+      "vital sign", "tensi", "nadi", "respirasi", "suhu", "spo2",
+
+      // Farmakologi & perhitungan obat
+      "dosis", "obat", "farmasi", "formularium",
+      "mg", "ml", "mcg", "tetesan", "drip", "infus",
+      "perhitungan medis", "konversi obat",
+
+      // Alat medis
+      "alat medis", "alat kesehatan", "monitor pasien",
+      "defibrillator", "ecg", "xray", "ct scan", "usg",
+      "infusion pump",
+
+      // Tindakan klinis
+      "resusitasi", "bls", "acls", "p3k", "first aid",
+      "pemasangan infus", "pemasangan kateter",
+      "pemasangan ngt", "perawatan luka", "dressing",
+
+      // Laboratorium & tanda klinis
+      "laboratorium", "gula darah", "elektrolit",
+      "natrium", "kalium", "hemoglobin", "hematokrit",
+
+      // Triage dan kegawatdaruratan
+      "triage", "gawat darurat", "kedaruratan"
     ];
 
+    // Jika tidak mengandung kata kunci → tolak
     if (!allowedKeywords.some(w => userText.includes(w))) {
       return new Response(
         JSON.stringify({
-          reply: "Maaf, saya hanya bisa menjawab topik terkait ZEDKalkulator, keperawatan, dan perhitungan dosis obat."
+          reply: "Maaf, saya hanya bisa menjawab topik terkait keperawatan, medis, perhitungan dosis, dan aplikasi ZEDKalkulator."
         }),
         { headers: { "Content-Type": "application/json" } }
       );
     }
 
     // ============================================
-    //   Tambahan otomatis:
-    //   Jika user bertanya tentang pembuat aplikasi
+    //   Jawaban khusus: Pembuat aplikasi
     // ============================================
     if (
       userText.includes("pembuat") ||
@@ -48,7 +81,19 @@ export async function onRequestPost({ request, env }) {
     }
 
     // ============================================
-    //           SYSTEM PROMPT KREATIF
+    //   Jawaban khusus: Lokasi kerja pembuat
+    // ============================================
+    if (userText.includes("kerja") && userText.includes("khairul")) {
+      return new Response(
+        JSON.stringify({
+          reply: "Muhammad Khairul Zed bekerja di **RSUD dr Doris Sylvanus**."
+        }),
+        { headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // ============================================
+    //           SYSTEM PROMPT KREATIF (UPGRADE)
     // ============================================
     const enhancedSystemPrompt = {
       role: "system",
@@ -56,17 +101,34 @@ export async function onRequestPost({ request, env }) {
 Anda adalah ZedAI, asisten resmi aplikasi zedKalkulator.
 
 Tujuan Anda:
-- Memberikan jawaban kreatif, informatif, jelas, ramah.
-- Selalu fokus pada konteks medis, keperawatan, perhitungan obat, dan fitur ZEDKalkulator.
-- Gunakan gaya bahasa profesional namun tetap mudah dipahami.
+- Memberikan jawaban profesional, jelas, edukatif, terstruktur.
+- Fokus pada dunia kesehatan, medis, keperawatan, farmasi,
+  perhitungan dosis, skill klinis, dan fitur ZEDKalkulator.
+- Anda boleh memberi detail lengkap seperti penyebab, patofisiologi,
+  langkah tindakan, contoh kasus, tabel, dan algoritma.
+- Tetap aman: Tidak memberi diagnosa atau resep obat.
 
-Jika pengguna bertanya tentang pembuat kamu/aplikasi, jawab dengan:
+Jika pengguna bertanya tentang pembuat aplikasi, jawab:
 "zedKalkulator dibuat dan disusun oleh Muhammad Khairul Zed, S.Kep.,Ners."
-Jika pengguna bertanya di mana Muhammad khairul zed bekerja, jawab dengan:"di RSUD dr Doris Sylvanus"
-Jangan membahas hal di luar topik keperawatan, perhitungan dosis, dan aplikasi ZED.
+
+Jika pengguna bertanya di mana Muhammad Khairul Zed bekerja, jawab:
+"di RSUD dr Doris Sylvanus"
+
+Larangan:
+- Jangan membahas politik, gosip, teknologi umum, atau hal non-medis.
+- Jangan memberikan keputusan klinis yang menggantikan dokter.
+
+Gunakan gaya bahasa:
+- Profesional
+- Mudah dipahami
+- Ramah
+- Boleh menggunakan tabel, poin, dan format edukatif lain
 `
     };
 
+    // ============================================
+    //       KIRIM KE GROQ API
+    // ============================================
     const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -76,7 +138,7 @@ Jangan membahas hal di luar topik keperawatan, perhitungan dosis, dan aplikasi Z
       body: JSON.stringify({
         model: 'llama-3.1-8b-instant',
         messages: [enhancedSystemPrompt, ...messages],
-        temperature: 0.9,  // lebih kreatif
+        temperature: 0.9,
         stream: false,
       }),
     });
