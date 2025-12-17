@@ -1,41 +1,72 @@
+
 export async function onRequestPost({ request, env }) {
   try {
     const body = await request.json();
     const messages = body.messages || [];
 
     // ============================================
-    //   ⛔ FILTER: Hanya izinkan topik tertentu
+    //   FILTER: Hanya izinkan topik tertentu
     // ============================================
     const userText = messages[messages.length - 1]?.content?.toLowerCase() || "";
 
-    // Topik yang DIIZINKAN
     const allowedKeywords = [
-      // Aplikasi
-      "zedkalkulator", "zedose", "zed ai", "kalkulator infus", 
+      "zedkalkulator", "zedose", "zed ai", "kalkulator infus",
       "syringe pump", "mabl", "abl", "ebv", "pengenceran obat",
-
-      // Keperawatan
-      "perawat", "keperawatan", "triage", "vital sign", 
+      "perawat", "keperawatan", "triage", "vital sign",
       "tindakan keperawatan", "alat medis",
-
-      // Perhitungan obat
       "dosis", "obat", "mg", "ml", "mcg", "tetesan",
       "infus", "drip", "perhitungan medis", "konversi obat"
     ];
 
-    // Jika TIDAK mengandung salah satu kata yang diizinkan → blokir
     if (!allowedKeywords.some(w => userText.includes(w))) {
       return new Response(
         JSON.stringify({
-          reply: "Maaf, saya hanya dapat menjawab pertanyaan terkait aplikasi ZEDKalkulator, keperawatan, atau perhitungan obat."
+          reply: "Maaf, saya hanya bisa menjawab topik terkait ZEDKalkulator, keperawatan, dan perhitungan dosis obat."
         }),
         { headers: { "Content-Type": "application/json" } }
       );
     }
 
     // ============================================
-    //       GROQ API REQUEST (tetap sama)
+    //   Tambahan otomatis:
+    //   Jika user bertanya tentang pembuat aplikasi
     // ============================================
+    if (
+      userText.includes("pembuat") ||
+      userText.includes("developer") ||
+      userText.includes("yang buat") ||
+      userText.includes("siapa pembuat") ||
+      userText.includes("siapa yang membuat") ||
+      userText.includes("penyusun")
+    ) {
+      return new Response(
+        JSON.stringify({
+          reply: "Aplikasi ZEDKalkulator dibuat dan disusun oleh **Muhammad Khairul Zed, S.Kep.,Ners**."
+        }),
+        { headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // ============================================
+    //           SYSTEM PROMPT KREATIF
+    // ============================================
+    const enhancedSystemPrompt = {
+      role: "system",
+      content: `
+Anda adalah ZedAI, asisten resmi aplikasi ZEDKalkulator.
+
+Tujuan Anda:
+- Memberikan jawaban kreatif, informatif, jelas, ramah.
+- Selalu fokus pada konteks medis, keperawatan, perhitungan obat, dan fitur ZEDKalkulator.
+- Gunakan gaya bahasa profesional namun tetap mudah dipahami.
+
+Jika pengguna bertanya tentang pembuat aplikasi, jawab dengan:
+"ZEDKalkulator dibuat dan disusun oleh Muhammad Khairul Zed, S.Kep.,Ners."
+
+Jangan membahas hal di luar topik keperawatan, perhitungan dosis, dan aplikasi ZED.
+`
+    };
+
     const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -44,8 +75,8 @@ export async function onRequestPost({ request, env }) {
       },
       body: JSON.stringify({
         model: 'llama-3.1-8b-instant',
-        messages,
-        temperature: 0.7,
+        messages: [enhancedSystemPrompt, ...messages],
+        temperature: 0.9,  // lebih kreatif
         stream: false,
       }),
     });
