@@ -1,95 +1,75 @@
-// ================================
-//  ZEDAI CHAT CLIENT (chat.js)
-// ================================
 
-// SYSTEM PROMPT dimasukkan ke awal array setiap kali request
-function getSystemPrompt() {
-  return {
-    role: "system",
-    content: `
-Anda adalah ZedAI, asisten cerdas yang dapat menjawab berbagai pertanyaan secara bebas dan variatif.
-
-Keahlian:
-- Aplikasi ZEDKalkulator & ZEDose
-- Perhitungan medis (dosis, infus, syringe pump, MABL, EBV, ABL)
-- Keperawatan & tindakan dasar
-
-Ketentuan:
-1. Jika ditanya tentang aplikasi ZEDKalkulator, jelaskan lengkap.
-2. Jika ditanya siapa pembuat atau penyusun ZEDKalkulator →
-   Jawab: "Penyusun dan pengembang ZedKalkulator adalah Muhammad Khairul Zed, S.Kep.Ns."
-3. Boleh jawab topik umum lainnya secara bebas & ramah.
-4. Jika topik medis berisiko, beri jawaban aman.
-
-Anda harus menjadi asisten yang ramah & ahli terutama terkait ZEDKalkulator.
-`
-  };
-}
-
-
-// ==========================================
-// FUNGSI MENGIRIM PESAN KE SERVER WORKER
-// ==========================================
-
-async function sendMessageToAI(userMessage) {
+export async function onRequestPost({ request, env }) {
   try {
-    const res = await fetch("/api/chat", {
+    const body = await request.json();
+    const userMessages = body.messages || [];
+
+    // ============================================
+    // ⭐ SYSTEM PROMPT SETENGAH BEBAS
+    // ============================================
+    const systemPrompt = {
+      role: "system",
+      content: `
+Anda adalah ZedAI, asisten cerdas dari ZEDKalkulator.
+
+Fokus utama Anda adalah:
+• aplikasi ZEDKalkulator, ZEDose, dan fitur medisnya
+• keperawatan, vital sign, tindakan dasar
+• perhitungan dosis obat, infus, drip rate, ABL, EBV, MABL, dan perhitungan medis lain
+
+Namun Anda **tetap harus menjawab semua pertanyaan di luar topik** dengan sopan, informatif, dan ramah.
+
+Jika pertanyaan tidak berkaitan dengan medis atau aplikasi ZED:
+→ Jawab secara normal sebagai asisten umum tanpa menolak.
+
+Jangan memberikan informasi berbahaya, ilegal, atau merugikan.
+Jawablah dengan jelas, aman, dan membantu.
+`
+    };
+
+    // Gabungkan systemPrompt dengan pesan user
+    const messages = [systemPrompt, ...userMessages];
+
+    // ============================================
+    // ⛔ FILTER TOPIK DIHAPUS
+    // ============================================
+
+    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
+        "Authorization": `Bearer ${env.GROQ_API_KEY}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        messages: [
-          getSystemPrompt(),           // prompt sistem selalu ikut
-          { role: "user", content: userMessage }
-        ]
+        model: "llama-3.1-8b-instant",
+        messages,
+        temperature: 0.7,
+        stream: false
       })
     });
 
-    const data = await res.json();
+    if (!groqRes.ok) {
+      const errText = await groqRes.text();
+      return new Response(JSON.stringify({
+        error: "Groq API error",
+        detail: errText
+      }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
 
-    if (data.reply) return data.reply;
-    if (data.error) return "Terjadi kesalahan server: " + data.error;
+    const groqData = await groqRes.json();
+    const reply = groqData?.choices?.[0]?.message?.content ?? "";
 
-    return "Tidak ada balasan dari server.";
+    return new Response(JSON.stringify({ reply }), {
+      headers: { "Content-Type": "application/json" }
+    });
 
   } catch (err) {
-    return "Gagal menghubungi server: " + err.message;
+    return new Response(
+      JSON.stringify({ error: "Server error", detail: String(err) }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
   }
 }
-
-
-// ==========================================
-// HANDLE UI CHAT
-// ==========================================
-
-document.addEventListener("DOMContentLoaded", () => {
-  const input = document.getElementById("chat-input");
-  const sendBtn = document.getElementById("chat-send");
-  const chatBox = document.getElementById("chat-box");
-
-  function addBubble(text, sender) {
-    const div = document.createElement("div");
-    div.className = sender === "user" ? "bubble user" : "bubble ai";
-    div.textContent = text;
-    chatBox.appendChild(div);
-    chatBox.scrollTop = chatBox.scrollHeight;
-  }
-
-  async function handleSend() {
-    const msg = input.value.trim();
-    if (!msg) return;
-
-    addBubble(msg, "user");
-    input.value = "";
-
-    const reply = await sendMessageToAI(msg);
-    addBubble(reply, "ai");
-  }
-
-  sendBtn.addEventListener("click", handleSend);
-
-  input.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") handleSend();
-  });
-});
