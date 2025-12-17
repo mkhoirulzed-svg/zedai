@@ -15,7 +15,7 @@ export async function onRequestPost({ request, env }) {
       "perawat", "keperawatan", "triage", "vital sign",
       "tindakan keperawatan", "alat medis",
       "dosis", "obat", "mg", "ml", "mcg", "tetesan",
-      "infus", "drip", "perhitungan medis", "konversi obat"
+      "infus", "drip", "perhitungan medis", "konversi obat" "asuhan keperawatan" "tindakan keperawatan" "diagnosa keperawatan"
     ];
 
     if (!allowedKeywords.some(w => userText.includes(w))) {
