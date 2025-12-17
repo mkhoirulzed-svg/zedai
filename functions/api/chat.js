@@ -41,7 +41,7 @@ export async function onRequestPost({ request, env }) {
     ) {
       return new Response(
         JSON.stringify({
-          reply: "Aplikasi ZEDKalkulator dibuat dan disusun oleh **Muhammad Khairul Zed, S.Kep.,Ners**."
+          reply: "Aplikasi zedKalkulator dibuat dan disusun oleh **Muhammad Khairul Zed, S.Kep.,Ners**."
         }),
         { headers: { "Content-Type": "application/json" } }
       );
