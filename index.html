@@ -1,85 +1,168 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="utf-8" />
-  <title>Chatbot Groq</title>
-  <style>
-    body { font-family: sans-serif; max-width: 600px; margin: 20px auto; }
-    #chat { border: 1px solid #ccc; padding: 10px; height: 400px; overflow-y: auto; }
-    .msg-user { margin: 5px 0; text-align: right; }
-    .msg-bot { margin: 5px 0; text-align: left; }
-    .msg-user span { background: #d1e7ff; padding: 5px 8px; border-radius: 6px; display: inline-block; }
-    .msg-bot span { background: #e9ecef; padding: 5px 8px; border-radius: 6px; display: inline-block; }
-    form { margin-top: 10px; display: flex; gap: 8px; }
-    input { flex: 1; padding: 8px; }
-    button { padding: 8px 16px; }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>ZED AI - Chatbot Groq</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>.hidden { display: none; }</style>
 </head>
-<body>
-  <h1>Chatbot Groq (Cloudflare)</h1>
-  <div id="chat"></div>
-  <form id="form">
-    <input id="input" autocomplete="off" placeholder="Tulis pesan..." />
-    <button type="submit">Kirim</button>
-  </form>
 
+<body class="font-sans bg-slate-100 min-h-screen flex justify-center p-3 sm:p-6">
+
+  <!-- BACKDROP -->
+  <div id="backdrop" class="fixed inset-0 bg-black/30 z-30 hidden" onclick="toggleMenu()"></div>
+
+  <!-- MENU SAMPING (SAMA DENGAN ZEDOSE TOOLS) -->
+  <aside
+    id="sideMenu"
+    class="fixed inset-y-0 left-0 z-40 w-64 max-w-full bg-teal-100 shadow-xl transform -translate-x-full transition-transform duration-200 ease-out"
+  >
+    <div class="p-4 border-b border-teal-200 flex items-center justify-between">
+      <div class="font-semibold text-slate-800 text-sm">Menu Aplikasi</div>
+      <button onclick="toggleMenu()" class="p-1 rounded-md hover:bg-teal-200">
+        <span class="block w-4 h-0.5 bg-slate-700 rotate-45 translate-y-[1px]"></span>
+        <span class="block w-4 h-0.5 bg-slate-700 -rotate-45 -translate-y-[1px]"></span>
+      </button>
+    </div>
+
+    <nav class="p-4 text-sm space-y-1 text-slate-800">
+      <a href="https://zedkalkalkulator.site/infus.html" class="px-2 py-2 rounded-md hover:bg-teal-200 flex items-center">💧 Kalkulator Tetesan Infus</a>
+      <a href="https://zedkalkalkulator.site/index_NoBB.html" class="px-2 py-2 rounded-md hover:bg-teal-200 flex items-center">🧪 Syringe Pump - Tanpa BB</a>
+      <a href="https://zedkalkalkulator.site/index.html" class="px-2 py-2 rounded-md hover:bg-teal-200 flex items-center">🧪 Syringe Pump - Dengan BB</a>
+      <a href="https://zedkalkalkulator.site/anestesi.html" class="px-2 py-2 rounded-md hover:bg-teal-200 flex items-center">💤 EBV | ABL | MABL</a>
+      <a href="https://zedkalkalkulator.site/insulin.html" class="px-2 py-2 rounded-md hover:bg-teal-200 flex items-center">💊 Kalkulator Insulin</a>
+      <a href="https://zedkalkalkulator.site/kalkulatorpengenceranobat.html" class="px-2 py-2 rounded-md hover:bg-teal-200 flex items-center">💉 Kalkulator Pengenceran Obat</a>
+      <a href="https://zedkalkalkulator.site/about.html" class="px-2 py-2 rounded-md hover:bg-teal-200 flex items-center">ℹ️ Tentang Aplikasi</a>
+
+      <hr class="border-teal-300 my-2">
+
+      <a href="#" class="px-2 py-2 rounded-md bg-teal-200 font-medium flex items-center">🤖 ZED AI</a>
+    </nav>
+  </aside>
+
+  <!-- KONTEN -->
+  <div class="w-full max-w-2xl flex flex-col gap-3 relative">
+
+    <!-- HEADER -->
+    <header class="flex items-center justify-between mb-2">
+      <button onclick="toggleMenu()" class="p-2 rounded-lg hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <span class="sr-only">Buka menu</span>
+        <div class="w-5 h-0.5 bg-slate-800 mb-1"></div>
+        <div class="w-5 h-0.5 bg-slate-800 mb-1"></div>
+        <div class="w-5 h-0.5 bg-slate-800"></div>
+      </button>
+
+      <div class="flex items-center gap-2">
+        <img src="192x193.png" alt="Logo" class="h-7 w-7 rounded-md">
+        <span class="text-xs sm:text-sm text-slate-600 font-medium">ZEDose Tools</span>
+      </div>
+    </header>
+
+    <!-- CARD CHAT AI -->
+    <div class="bg-white shadow-xl border border-slate-200 rounded-2xl p-4 sm:p-6">
+
+      <h1 class="text-xl sm:text-3xl font-bold tracking-tight text-slate-800 mb-1">ZED AI</h1>
+      <p class="text-xs sm:text-sm text-slate-500 mb-4">Asisten cerdas berbasis Groq LLM.</p>
+
+      <!-- CHAT WINDOW -->
+      <div id="chat" class="border border-slate-200 rounded-lg p-3 bg-slate-50 h-96 overflow-y-auto text-sm"></div>
+
+      <!-- INPUT -->
+      <form id="form" class="mt-3 flex gap-2">
+        <input id="input" autocomplete="off"
+          class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:ring-blue-500"
+          placeholder="Tulis pesan..." />
+
+        <button type="submit"
+          class="bg-blue-600 text-white px-4 py-2 text-sm rounded-lg hover:bg-blue-700">
+          Kirim
+        </button>
+      </form>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="text-center text-[10px] sm:text-xs text-slate-500 leading-snug">
+      <div>Created by Muhammad Khairul Zed, S.Kep.,Ners</div>
+      <div>RSUD dr Doris Sylvanus Kalimantan Tengah</div>
+    </footer>
+  </div>
+
+  <!-- SCRIPT -->
   <script>
-    const form = document.getElementById('form');
-    const input = document.getElementById('input');
-    const chat = document.getElementById('chat');
+    function toggleMenu() {
+      const menu = document.getElementById("sideMenu");
+      const backdrop = document.getElementById("backdrop");
+      menu.classList.toggle("-translate-x-full");
+      backdrop.classList.toggle("hidden");
+    }
 
-    // Menyimpan riwayat percakapan untuk dikirim ke Groq
+    const form = document.getElementById("form");
+    const input = document.getElementById("input");
+    const chat = document.getElementById("chat");
+
     let messages = [
-      { role: 'system', content: 'Kamu adalah asisten yang membantu dan ramah.' }
+      { role: "system", content: "Kamu adalah asisten yang membantu dan ramah." }
     ];
 
     function addMessage(role, text) {
-      const div = document.createElement('div');
-      div.className = role === 'user' ? 'msg-user' : 'msg-bot';
-      div.innerHTML = `<span>${text}</span>`;
+      const div = document.createElement("div");
+      div.className = role === "user"
+        ? "text-right my-1"
+        : "text-left my-1";
+
+      const bubble = document.createElement("span");
+      bubble.className =
+        role === "user"
+          ? "inline-block px-3 py-2 bg-blue-100 rounded-xl"
+          : "inline-block px-3 py-2 bg-slate-200 rounded-xl";
+
+      bubble.textContent = text;
+
+      div.appendChild(bubble);
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
     }
 
-    form.addEventListener('submit', async (e) => {
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const text = input.value.trim();
       if (!text) return;
 
-      addMessage('user', text);
-      messages.push({ role: 'user', content: text });
-      input.value = '';
+      addMessage("user", text);
+      messages.push({ role: "user", content: text });
+      input.value = "";
       input.focus();
 
-      addMessage('bot', 'Sedang mengetik...');
+      addMessage("bot", "Sedang mengetik...");
 
       try {
-        const res = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ messages }),
         });
 
         const data = await res.json();
-        // Hapus "Sedang mengetik..."
         chat.removeChild(chat.lastChild);
 
         if (data.error) {
-          console.error(data);
-          addMessage('bot', 'Terjadi error di server.');
+          addMessage("bot", "Terjadi error di server.");
           return;
         }
 
-        const reply = data.reply || '(jawaban kosong)';
-        addMessage('bot', reply);
-        messages.push({ role: 'assistant', content: reply });
+        const reply = data.reply || "(jawaban kosong)";
+        addMessage("bot", reply);
+
+        messages.push({ role: "assistant", content: reply });
+
       } catch (err) {
         console.error(err);
-        // Hapus "Sedang mengetik..."
         chat.removeChild(chat.lastChild);
-        addMessage('bot', 'Gagal menghubungi server.');
+        addMessage("bot", "Gagal menghubungi server.");
       }
     });
   </script>
+
 </body>
 </html>
