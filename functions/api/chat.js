@@ -1,78 +1,87 @@
 
-export async function onRequestPost({ request, env }) {
+// ==============================
+// CHAT.JS FRONT-END
+// ==============================
+
+// Riwayat percakapan (supaya AI ingat konteks)
+let conversation = [];
+
+async function sendMessage() {
+  const input = document.getElementById("user-input");
+  const text = input.value.trim();
+  if (!text) return;
+
+  // Tambahkan pesan user ke percakapan
+  conversation.push({
+    role: "user",
+    content: text
+    // kamu juga bisa menambah id user, dsb jika perlu
+  });
+
+  // Tampilkan pesan user
+  addMessageToChat("User", text);
+
+  input.value = "";
+  input.disabled = true;
+
+  // ================================
+  // KIRIM KE WORKER CLOUDLFARE
+  // ================================
   try {
-    const body = await request.json();
-    const userMessages = Array.isArray(body.messages) ? body.messages : [];
-
-    // ================================
-    // System Prompt secara aman (split)
-    // ================================
-    const promptLines = [
-      "Anda adalah ZedAI, asisten cerdas yang dapat menjawab secara bebas.",
-      "",
-      "MODE KHUSUS ZEDKALKULATOR:",
-      "- Aktif jika user bertanya tentang ZEDKalkulator, ZEDose Calc, ZedAI, EBV, ABL, MABL, transfusi, fitur, atau cara pakai aplikasi.",
-      "- Jawaban harus akurat sesuai fitur asli:",
-      "  - Kalkulator Tetesan Infus",
-      "  - Kalkulator Syringe Pump",
-      "  - Protap Insulin",
-      "  - Pengenceran obat",
-      "  - EBV, ABL, MABL",
-      "  - Asisten berbasis AI",
-      "- Jangan membuat fitur fiktif.",
-      "- Jika user bertanya siapa pembuat ZedAI atau ZEDKalkulator:",
-      "  Jawab: ZEDKalkulator dan ZedAI dibuat oleh Muhammad Khairul Zed, S.Kep.,Ners.",
-      "",
-      "MODE BEBAS:",
-      "- Jika bukan terkait aplikasi, Anda boleh menjawab secara natural dan kreatif."
-    ];
-
-    const systemPrompt = {
-      role: "system",
-      content: promptLines.join("\n")
-    };
-
-    const messages = [systemPrompt, ...userMessages];
-
-    // ================================
-    // KIRIM KE GROQ
-    // ================================
-    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const res = await fetch("/api", {      // <--- endpoint worker kamu
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${env.GROQ_API_KEY}`
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "llama-3.1-70b-versatile",
-        messages,
-        temperature: 0.8,
-        max_tokens: 800 // kurangi agar tidak memicu crash
+        messages: conversation
       })
     });
 
-    if (!groqRes.ok) {
-      const txt = await groqRes.text();
-      return new Response(JSON.stringify({ error: "Groq API Error", detail: txt }), {
-        status: 500
-      });
+    const data = await res.json();
+
+    // Jika worker ada error
+    if (data.error) {
+      addMessageToChat("ZedAI (error)", data.error);
+      input.disabled = false;
+      return;
     }
 
-    const groqData = await groqRes.json();
+    const reply = data.reply || "(Tidak ada jawaban)";
+    addMessageToChat("ZedAI", reply);
 
-    // Proteksi tambahan agar Worker tidak crash
-    const replyContent =
-      groqData?.choices?.[0]?.message?.content || "Maaf, tidak ada jawaban.";
-
-    return new Response(JSON.stringify({ reply: replyContent }), {
-      headers: { "Content-Type": "application/json" },
-      status: 200
+    // Tambahkan balasan AI ke riwayat
+    conversation.push({
+      role: "assistant",
+      content: reply
     });
 
-  } catch (err) {
-    return new Response(JSON.stringify({
-      error: "Server error",
-      detail: err?.message || String(err)
-    }), { status: 500 });
+  } catch (e) {
+    addMessageToChat("ZedAI (error)", "Server tidak merespon.");
   }
+
+  input.disabled = false;
 }
+
+
+// ==============================
+// Fungsi menampilkan chat
+// ==============================
+function addMessageToChat(sender, text) {
+  const chatBox = document.getElementById("chat-box");
+
+  const bubble = document.createElement("div");
+  bubble.className = "chat-bubble";
+  bubble.innerHTML = `<strong>${sender}:</strong> ${text}`;
+
+  chatBox.appendChild(bubble);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+
+// ==============================
+// Enter untuk mengirim
+// ==============================
+document.getElementById("user-input").addEventListener("keypress", function (e) {
+  if (e.key === "Enter") sendMessage();
+});
