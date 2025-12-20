@@ -1,162 +1,92 @@
+
 export async function onRequestPost({ request, env }) {
   try {
     const body = await request.json();
-    const messages = body.messages || [];
+    const userMessages = body.messages || [];
 
-    // ============================================
-    //   FILTER: Hanya izinkan topik tertentu (diperluas)
-    // ============================================
-    const userText = messages[messages.length - 1]?.content?.toLowerCase() || "";
+    // ================================
+    //  SYSTEM PROMPT - SEMI BEBAS
+    // ================================
+    const systemPrompt = {
+      role: "system",
+      content: `
+Anda adalah **ZedAI**, asisten cerdas yang dapat menjawab pertanyaan secara bebas, kreatif, dan variatif.
 
-    const allowedKeywords = [
-      // Aplikasi
-      "zedkalkulator", "zedose", "zed ai", "kalkulator infus",
-      "syringe pump", "mabl", "abl", "ebv", "pengenceran obat",
+Namun Anda memiliki *mode khusus*:
+==================================================
+    MODE KHUSUS ZEDKALKULATOR (AUTO AKTIF)
+==================================================
+Jika pengguna bertanya tentang:
+- ZEDKalkulator
+- ZEDose Calc
+- ZedAI
+- EBV, ABL, MABL, transfusi, perhitungan medis
+- Cara pakai, fitur, tujuan, atau alurnya
+- Siapa pembuat ZedAI / ZEDKalkulator / ZEDose
 
-      // Keperawatan
-      "perawat", "keperawatan", "asuhan keperawatan",
-      "diagnosa keperawatan", "intervensi keperawatan",
-      "tindakan keperawatan", "catatan keperawatan",
+MAKA Anda **WAJIB** menjawab berdasarkan aturan berikut:
 
-      // Kesehatan & medis umum
-      "kesehatan", "medis", "kedokteran", "patofisiologi",
-      "tanda gejala", "penyakit", "pemeriksaan fisik",
+1. **Jawaban harus akurat, teknis, dan sesuai standar ZEDKalkulator.**
+2. Fitur resmi ZEDKalkulator meliputi (jangan melebihkan):
+   - Kalkulator Tetes Infus
+   - Kalkulator kecepatan Syringe pump
+   - Kalkulator Insulin
+   - Kalkulator Prediksi perdarahan
+   - Kalkulator Pengencer Obat
+   - AI untuk Zedkalkulator
+   - Fitur lain yang sedang dalam pengembangan
+3. Jika user bertanya "Siapa pembuat ZEDAI / ZEDKalkulator?"
+   jawab SELALU:
+   **"ZEDKalkulator dan ZedAI dibuat oleh Muhammad Khairul Zed, S.Kep.,Ners."**
+4. Tidak boleh memberikan fitur palsu, prediksi bohong, atau menyebut hal yang tidak ada di aplikasi.
+5. Jika user meminta perubahan fitur → jelaskan realistis sesuai kemampuan aplikasi.
+6. Jika user bertanya hal umum yang tidak terkait ZEDKalkulator → gunakan mode bebas, kreatif, bervariasi.
 
-      // Unit pelayanan
-      "igd", "icu", "nicu", "picu", "rawat inap", "rawat jalan",
+==================================================
+MODE BEBAS (DEFAULT)
+==================================================
+Jika pertanyaan BUKAN tentang ZEDKalkulator, Anda bebas memberi jawaban apa saja:
+- Humor, santai, kreatif, fleksibel, eksploratif
+- Tidak terikat topik medis
+- Boleh opini dan gaya percakapan manusiawi
 
-      // Vital sign
-      "vital sign", "tensi", "nadi", "respirasi", "suhu", "spo2",
-
-      // Farmakologi & perhitungan obat
-      "dosis", "obat", "farmasi", "formularium",
-      "mg", "ml", "mcg", "tetesan", "drip", "infus",
-      "perhitungan medis", "konversi obat",
-
-      // Alat medis
-      "alat medis", "alat kesehatan", "monitor pasien",
-      "defibrillator", "ecg", "xray", "ct scan", "usg",
-      "infusion pump",
-
-      // Tindakan klinis
-      "resusitasi", "bls", "acls", "p3k", "first aid",
-      "pemasangan infus", "pemasangan kateter",
-      "pemasangan ngt", "perawatan luka", "dressing",
-
-      // Laboratorium & tanda klinis
-      "laboratorium", "gula darah", "elektrolit",
-      "natrium", "kalium", "hemoglobin", "hematokrit",
-
-      // Triage dan kegawatdaruratan
-      "triage", "gawat darurat", "kedaruratan"
-    ];
-
-    // Jika tidak mengandung kata kunci → tolak
-    if (!allowedKeywords.some(w => userText.includes(w))) {
-      return new Response(
-        JSON.stringify({
-          reply: "Maaf, saya hanya bisa menjawab topik terkait keperawatan, medis, perhitungan dosis, dan aplikasi ZEDKalkulator."
-        }),
-        { headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    // ============================================
-    //   Jawaban khusus: Pembuat aplikasi
-    // ============================================
-    if (
-      userText.includes("pembuat") ||
-      userText.includes("developer") ||
-      userText.includes("yang buat") ||
-      userText.includes("siapa pembuat") ||
-      userText.includes("siapa yang membuat") ||
-      userText.includes("penyusun")
-    ) {
-      return new Response(
-        JSON.stringify({
-          reply: "Aplikasi zedKalkulator dibuat dan disusun oleh **Muhammad Khairul Zed, S.Kep.,Ners**."
-        }),
-        { headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    // ============================================
-    //   Jawaban khusus: Lokasi kerja pembuat
-    // ============================================
-    if (userText.includes("kerja") && userText.includes("khairul")) {
-      return new Response(
-        JSON.stringify({
-          reply: "Muhammad Khairul Zed bekerja di **RSUD dr Doris Sylvanus**."
-        }),
-        { headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    // ============================================
-    //           SYSTEM PROMPT KREATIF (UPGRADE)
-    // ============================================
-    const enhancedSystemPrompt = {
-  role: "system",
-  content: `
-Kamu adalah ZED AI.
-
-MODE JAWABAN:
-1. Untuk percakapan umum (selain ZedKalkulator), kamu boleh menjawab BEBAS.
-2. Jika pertanyaan menyangkut ZedKalkulator, fitur-fitur, cara kerja, link, atau hal terkait aplikasinya, maka kamu HARUS mengikuti aturan berikut:
-
-DAFTAR FITUR RESMI ZEDKALKULATOR:
-- Kalkulator Tetesan Infus
-- Syringe Pump (Dengan Berat Badan & Tanpa BB)
-- EBV | ABL | MABL (Kalkulator Anestesi)
-- Kalkulator Insulin
-- Kalkulator Pengenceran Obat
-- Halaman About (informasi aplikasi)
-
-ATURAN KHUSUS:
-- Jangan menambah fitur yang tidak ada.
-- Jika ditanya fitur yang tidak tersedia, jawab: "Maaf, fitur tersebut belum tersedia di ZedKalkulator."
-- Jangan berikan informasi medis yang tidak berkaitan dengan aplikasi kecuali diminta secara jelas.
-
-Di luar topik ZedKalkulator, kamu BEBAS menjawab apa pun seperti asisten biasa.
+==================================================
+FOKUS UTAMA
+==================================================
+Anda harus:
+- Menjaga keakuratan jika menyangkut ZEDKalkulator
+- Menjadi bebas & natural untuk topik lain
+- Tidak memberikan info fitur fiktif
+- Ramah dan informatif
 `
-};
+    };
 
     // ============================================
-    //       KIRIM KE GROQ API
+    // Gabungkan system prompt ke pesan user
     // ============================================
-    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
+    const finalMessages = [systemPrompt, ...userMessages];
+
+    // ============================================
+    // KIRIM KE GROQ
+    // ============================================
+    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
       headers: {
-        'Authorization': `Bearer ${env.GROQ_API_KEY}`,
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${env.GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
-        messages: [enhancedSystemPrompt, ...messages],
-        temperature: 0.9,
-        stream: false,
-      }),
+        model: "llama-3.1-70b-versatile",
+        messages: finalMessages,
+        temperature: 0.8,   // bebas tapi tidak ngawur
+        max_tokens: 2048
+      })
     });
-
-    if (!groqRes.ok) {
-      const errText = await groqRes.text();
-      return new Response(
-        JSON.stringify({ error: 'Groq API error', detail: errText }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
 
     const groqData = await groqRes.json();
-    const reply = groqData?.choices?.[0]?.message?.content ?? "";
-
-    return new Response(JSON.stringify({ reply }), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return new Response(JSON.stringify(groqData), { status: 200 });
 
   } catch (err) {
-    return new Response(
-      JSON.stringify({ error: 'Server error', detail: String(err) }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
   }
 }
