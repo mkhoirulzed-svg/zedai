@@ -60,29 +60,32 @@
     </header>
 
     <!-- CARD CHAT AI -->
-    <div class="bg-white shadow-xl border border-slate-200 rounded-2xl p-4 sm:p-6">
+    <div class="flex flex-col h-screen">
 
-      <h1 class="text-xl sm:text-3xl font-bold tracking-tight text-slate-800 mb-1">ZED AI</h1>
-      <p class="text-xs sm:text-sm text-slate-500 mb-4">Asisten cerdas ZedCalc</p>
-
-      <!-- CHAT WINDOW -->
-      <div id="chat" class="border border-slate-200 rounded-lg p-3 bg-slate-50 h-96 overflow-y-auto text-sm"></div>
-
-      <!-- INPUT -->
-      <div id="chat-box" class="flex flex-col gap-2 h-[70vh] overflow-y-auto p-3"></div>
-
-<div class="flex gap-2 mt-3">
-  <input id="user-input" class="flex-1 p-3 border rounded-xl" placeholder="Ketik pesan..." />
-  <button id="send-btn" class="px-4 bg-blue-600 text-white rounded-xl">Kirim</button>
-</div>
-    </div>
-
-    <!-- FOOTER -->
-    <footer class="text-center text-[10px] sm:text-xs text-slate-500 leading-snug">
-      <div>Created by Muhammad Khairul Zed, S.Kep.,Ners</div>
-      <div>RSUD dr Doris Sylvanus Kalimantan Tengah</div>
-    </footer>
+  <!-- HEADER OPSIONAL -->
+  <div class="p-3 text-center font-bold border-b">
+    ZedAI Chat
   </div>
+
+  <!-- AREA CHAT (scrollable) -->
+  <div id="chat-box" class="flex flex-col gap-2 flex-1 overflow-y-auto p-3 bg-gray-50"></div>
+
+  <!-- AREA INPUT -->
+  <div class="p-3 border-t bg-white flex gap-2">
+    <input
+      id="user-input"
+      class="flex-1 p-3 border rounded-xl outline-none"
+      placeholder="Ketik pesan..."
+    />
+    <button
+      id="send-btn"
+      class="px-4 bg-blue-600 text-white rounded-xl"
+    >
+      Kirim
+    </button>
+  </div>
+
+</div>
 
   <!-- SCRIPT -->
   <script>
