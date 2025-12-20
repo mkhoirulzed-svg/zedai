@@ -87,6 +87,32 @@ if (isFreeMode) {
       );
     }
 
+// ============================================
+//   BYPASS PERTANYAAN IDENTITAS / PEMBUAT
+// ============================================
+const identityKeywords = [
+  "pembuat",
+  "yang buat",
+  "siapa kamu",
+  "siapa pembuat kamu",
+  "developer",
+  "penyusun",
+  "creator"
+];
+
+if (identityKeywords.some(k => userText.includes(k))) {
+  // lanjut ke logika jawaban pembuat
+} else if (!allowedKeywords.some(w => userText.includes(w))) {
+  return new Response(
+    JSON.stringify({
+      reply:
+        "Maaf, saya hanya bisa menjawab topik medis, keperawatan, dan ZEDKalkulator."
+    }),
+    { headers: { "Content-Type": "application/json" } }
+  );
+}
+
+  
     // ==================================================
     //   🔒 SUMBER KEBENARAN FITUR (DITAMBAHKAN)
     // ==================================================
@@ -106,9 +132,10 @@ if (isFreeMode) {
       "pengenceran obat": [
         "Konversi mg ke ml",
         "Perhitungan pengenceran obat injeksi"
-        "Protap insulin"
-    "Zed AI"
-      ]
+        ],
+      "Protap insulin":["Protap pemberian SP actrapid berdasarkan gula darah"],
+    "Zed AI": ["asisten AI zedkalkulator"
+      ],
     };
 
     // ==================================================
