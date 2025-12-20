@@ -186,6 +186,11 @@ Jangan menyebut fitur lain di luar daftar.
 Jika ragu, katakan "fitur tersebut belum tersedia".
 
 Berikan jawaban profesional, aman, dan edukatif.
+Anda BOLEH menjawab secara kreatif
+SELAMA:
+- Masih berkaitan dengan keperawatan, kesehatan, atau dunia medis
+- Tidak memberikan keputusan klinis atau instruksi medis langsung
+
 `
     };
 
