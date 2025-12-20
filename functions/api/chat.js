@@ -23,11 +23,44 @@ export async function onRequestPost({ request, env }) {
       "triage", "gawat darurat"
     ];
 
+    // ============================================
+//   MODE JAWAB BEBAS (NON MEDIS / UMUM)
+// ============================================
+const freeModeKeywords = [
+  "apa itu",
+  "jelaskan",
+  "bagaimana",
+  "kenapa",
+  "mengapa",
+  "contoh",
+  "ringkas",
+  "buatkan",
+  "tolong",
+  "bantu"
+];
+
+const isFreeMode = freeModeKeywords.some(k =>
+  userText.startsWith(k) || userText.includes(k)
+);
+
+// Jika pertanyaan umum → lewati filter keyword
+if (isFreeMode) {
+  // lanjut ke AI tanpa ditolak
+} else if (!allowedKeywords.some(w => userText.includes(w))) {
+  return new Response(
+    JSON.stringify({
+      reply:
+        "Maaf, saya hanya bisa menjawab topik medis, keperawatan, dan ZEDKalkulator."
+    }),
+    { headers: { "Content-Type": "application/json" } }
+  );
+}
+
     if (!allowedKeywords.some(w => userText.includes(w))) {
       return new Response(
         JSON.stringify({
           reply:
-            "Maaf, saya hanya bisa menjawab topik medis, keperawatan, perhitungan dosis, dan ZEDKalkulator."
+            "Maaf, saya hanya bisa menjawab topik medis, keperawatan, perhitungan dosis, dan zedkalkulator."
         }),
         { headers: { "Content-Type": "application/json" } }
       );
