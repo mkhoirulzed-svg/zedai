@@ -113,7 +113,8 @@ Fitur resmi ZEDKalkulator HANYA:
 - Syringe pump
 - EBV, ABL, MABL
 - Pengenceran obat
-
+- Protap Insulin
+- Ai zedcalc
 Jangan menyebut fitur lain di luar daftar.
 Jika ragu, katakan "fitur tersebut belum tersedia".
 
