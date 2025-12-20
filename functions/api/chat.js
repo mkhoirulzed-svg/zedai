@@ -50,18 +50,16 @@ if (isFreeMode) {
   return new Response(
     JSON.stringify({
       reply:
-        "Maaf, saya hanya bisa menjawab topik medis, keperawatan, dan ZEDKalkulator."
+        "Maaf, saya hanya bisa menjawab topik medis, keperawatan, dan zedkalkulator."
     }),
     { headers: { "Content-Type": "application/json" } }
   );
 }
 
-    if (!allowedKeywords.some(w => userText.includes(w))) {
-      return new Response(
-        JSON.stringify({
-          reply:
-            "Maaf, saya hanya bisa menjawab topik medis, keperawatan, perhitungan dosis, dan zedkalkulator."
-        }),
+   const isMedicalTopic = allowedKeywords.some(w =>
+  userText.includes(w)
+);
+
         { headers: { "Content-Type": "application/json" } }
       );
     }
