@@ -62,14 +62,6 @@ if (isFreeMode) {
   // lanjut ke AI tanpa ditolak
 }
 
-   const isMedicalTopic = allowedKeywords.some(w =>
-  userText.includes(w)
-);
-
-        { headers: { "Content-Type": "application/json" } }
-      );
-    }
-
 // ============================================
 //   BYPASS PERTANYAAN IDENTITAS / PEMBUAT
 // ============================================
