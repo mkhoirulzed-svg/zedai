@@ -20,7 +20,9 @@ export async function onRequestPost({ request, env }) {
       "vital sign", "tensi", "nadi", "suhu",
       "dosis", "obat", "infus",
       "alat medis", "alat kesehatan",
-      "triage", "gawat darurat"
+      "triage", "gawat darurat" "kalkulator kesehatan", "kalkulator medis", "ilmu kedokteran",
+      "alat kesehatan", "rumah sakit",
+      "dunia kedokteran", "dunia keperawatan"
     ];
 
     // ============================================
