@@ -88,103 +88,134 @@
 </div>
 
   <!-- SCRIPT -->
-  <script>
-    function toggleMenu() {
-      const menu = document.getElementById("sideMenu");
-      const backdrop = document.getElementById("backdrop");
-      menu.classList.toggle("-translate-x-full");
-      backdrop.classList.toggle("hidden");
-    }
+<script>
+/* =========================
+   MENU SAMPING
+========================= */
+function toggleMenu() {
+  const menu = document.getElementById("sideMenu");
+  const backdrop = document.getElementById("backdrop");
 
-    const form = document.getElementById("form");
-    const input = document.getElementById("input");
-    const chat = document.getElementById("chat");
+  menu.classList.toggle("-translate-x-full");
+  backdrop.classList.toggle("hidden");
+}
 
-    let messages = [
-      { role: "system", content: "Kamu adalah asisten yang membantu dan ramah." }
-    ];
+/* =========================
+   ELEMENT SELECTOR
+========================= */
+const chatBox = document.getElementById("chat-box");
+const userInput = document.getElementById("user-input");
+const sendBtn = document.getElementById("send-btn");
 
-    function addMessage(role, text) {
-      const div = document.createElement("div");
-      div.className = role === "user"
-        ? "text-right my-1"
-        : "text-left my-1";
+/* =========================
+   STATE CHAT
+========================= */
+let messages = [
+  { role: "system", content: "Kamu adalah asisten yang membantu dan ramah." }
+];
 
-      const bubble = document.createElement("span");
-      bubble.className =
-        role === "user"
-          ? "inline-block px-3 py-2 bg-blue-100 rounded-xl"
-          : "inline-block px-3 py-2 bg-slate-200 rounded-xl";
-
-      bubble.textContent = text;
-
-      div.appendChild(bubble);
-      chat.appendChild(div);
-      chat.scrollTop = chat.scrollHeight;
-    }
-    
-async function typeWriter(text) {
-  // container pesan bot
-  const div = document.createElement("div");
-  div.className = "text-left my-1";
+/* =========================
+   UI CHAT
+========================= */
+function addMessage(role, text) {
+  const wrapper = document.createElement("div");
+  wrapper.className = role === "user" ? "text-right my-1" : "text-left my-1";
 
   const bubble = document.createElement("span");
-  bubble.className = "inline-block px-3 py-2 bg-slate-200 rounded-xl whitespace-pre-line";
-  div.appendChild(bubble);
-  chat.appendChild(div);
+  bubble.className =
+    role === "user"
+      ? "inline-block px-3 py-2 bg-blue-100 rounded-xl"
+      : "inline-block px-3 py-2 bg-slate-200 rounded-xl whitespace-pre-line";
 
-  // tampilkan huruf per huruf
+  bubble.textContent = text;
+
+  wrapper.appendChild(bubble);
+  chatBox.appendChild(wrapper);
+  chatBox.scrollTop = chatBox.scrollHeight;
+
+  return wrapper;
+}
+
+/* =========================
+   TYPEWRITER BOT
+========================= */
+async function typeWriter(text) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "text-left my-1";
+
+  const bubble = document.createElement("span");
+  bubble.className =
+    "inline-block px-3 py-2 bg-slate-200 rounded-xl whitespace-pre-line";
+
+  wrapper.appendChild(bubble);
+  chatBox.appendChild(wrapper);
+
   let i = 0;
-  function type() {
+  function typing() {
     if (i < text.length) {
-      bubble.textContent += text.charAt(i);
+      bubble.textContent += text[i];
       i++;
-      chat.scrollTop = chat.scrollHeight;
-      setTimeout(type, 15); // kecepatan ketikan
+      chatBox.scrollTop = chatBox.scrollHeight;
+      setTimeout(typing, 15);
     }
   }
-  type();
+  typing();
 }
-    
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const text = input.value.trim();
-      if (!text) return;
 
-      addMessage("user", text);
-      messages.push({ role: "user", content: text });
-      input.value = "";
-      input.focus();
+/* =========================
+   SEND MESSAGE
+========================= */
+async function sendMessage() {
+  const text = userInput.value.trim();
+  if (!text) return;
 
-      addMessage("bot", "Sedang mengetik...");
+  addMessage("user", text);
+  messages.push({ role: "user", content: text });
 
-      try {
-        const res = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages }),
-        });
+  userInput.value = "";
+  userInput.focus();
 
-        const data = await res.json();
-        chat.removeChild(chat.lastChild);
+  const loading = addMessage("bot", "Sedang mengetik...");
 
-        if (data.error) {
-          addMessage("bot", "Terjadi error di server.");
-          return;
-        }
-
-        const reply = data.reply || "(jawaban kosong)";
-        await typeWriter(reply);
-        
-        messages.push({ role: "assistant", content: reply });
-
-      } catch (err) {
-        console.error(err);
-        chat.removeChild(chat.lastChild);
-        addMessage("bot", "Gagal menghubungi server.");
-      }
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages })
     });
-  </script>
+
+    const data = await res.json();
+    chatBox.removeChild(loading);
+
+    if (data.error) {
+      addMessage("bot", "Terjadi kesalahan server.");
+      return;
+    }
+
+    const reply = data.reply || "(tidak ada jawaban)";
+    await typeWriter(reply);
+    messages.push({ role: "assistant", content: reply });
+
+  } catch (err) {
+    console.error(err);
+    chatBox.removeChild(loading);
+    addMessage("bot", "Gagal menghubungi server.");
+  }
+}
+
+/* =========================
+   EVENT LISTENER
+========================= */
+sendBtn.addEventListener("click", sendMessage);
+
+userInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+</script>
+
 
 </body>
 </html>
