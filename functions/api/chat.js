@@ -1,87 +1,49 @@
 
-// ==============================
-// CHAT.JS FRONT-END
-// ==============================
+const input = document.getElementById("userInput");
+const chatBox = document.getElementById("chatBox");
 
-// Riwayat percakapan (supaya AI ingat konteks)
-let conversation = [];
+function appendMessage(role, text) {
+  const bubble = document.createElement("div");
+  bubble.className = role === "user" ? "user-bubble" : "ai-bubble";
+  bubble.textContent = text;
+  chatBox.appendChild(bubble);
+  chatBox.scrollTop = chatBox.scrollHeight;
+  return bubble;
+}
+
+function typeWriterEffect(element, text, speed = 20) {
+  let i = 0;
+  element.textContent = "";
+  function type() {
+    if (i < text.length) {
+      element.textContent += text.charAt(i);
+      i++;
+      setTimeout(type, speed);
+    }
+  }
+  type();
+}
 
 async function sendMessage() {
-  const input = document.getElementById("user-input");
   const text = input.value.trim();
   if (!text) return;
 
-  // Tambahkan pesan user ke percakapan
-  conversation.push({
-    role: "user",
-    content: text
-    // kamu juga bisa menambah id user, dsb jika perlu
+  appendMessage("user", text);
+  input.value = "";
+
+  // bubble kosong untuk typing AI
+  const aiBubble = appendMessage("assistant", "");
+
+  const res = await fetch("/api/chat", {
+    method: "POST",
+    body: JSON.stringify({
+      messages: [{ role: "user", content: text }]
+    })
   });
 
-  // Tampilkan pesan user
-  addMessageToChat("User", text);
+  const data = await res.json();
+  const reply = data.reply || "Error";
 
-  input.value = "";
-  input.disabled = true;
-
-  // ================================
-  // KIRIM KE WORKER CLOUDLFARE
-  // ================================
-  try {
-    const res = await fetch("/api", {      // <--- endpoint worker kamu
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        messages: conversation
-      })
-    });
-
-    const data = await res.json();
-
-    // Jika worker ada error
-    if (data.error) {
-      addMessageToChat("ZedAI (error)", data.error);
-      input.disabled = false;
-      return;
-    }
-
-    const reply = data.reply || "(Tidak ada jawaban)";
-    addMessageToChat("ZedAI", reply);
-
-    // Tambahkan balasan AI ke riwayat
-    conversation.push({
-      role: "assistant",
-      content: reply
-    });
-
-  } catch (e) {
-    addMessageToChat("ZedAI (error)", "Server tidak merespon.");
-  }
-
-  input.disabled = false;
+  // animasi mengetik
+  typeWriterEffect(aiBubble, reply);
 }
-
-
-// ==============================
-// Fungsi menampilkan chat
-// ==============================
-function addMessageToChat(sender, text) {
-  const chatBox = document.getElementById("chat-box");
-
-  const bubble = document.createElement("div");
-  bubble.className = "chat-bubble";
-  bubble.innerHTML = `<strong>${sender}:</strong> ${text}`;
-
-  chatBox.appendChild(bubble);
-  chatBox.scrollTop = chatBox.scrollHeight;
-}
-
-
-// ==============================
-// Enter untuk mengirim
-// ==============================
-document.getElementById("user-input").addEventListener("keypress", function (e) {
-  if (e.key === "Enter") sendMessage();
-});
