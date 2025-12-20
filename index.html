@@ -60,7 +60,7 @@
     </header>
 
     <!-- CARD CHAT AI -->
-    <div class="flex flex-col h-screen">
+    <div class="flex flex-col h-[100dvh] relative">
 
   <!-- HEADER OPSIONAL -->
   <div class="p-3 text-center font-bold border-b">
@@ -68,10 +68,16 @@
   </div>
 
   <!-- AREA CHAT (scrollable) -->
-  <div id="chat-box" class="flex flex-col gap-2 flex-1 overflow-y-auto p-3 bg-gray-50"></div>
+  <div
+  id="chat-box"
+  class="flex flex-col gap-2 flex-1 overflow-y-auto p-3 pb-24 bg-gray-50"
+></div>
+
 
   <!-- AREA INPUT -->
-  <div class="p-3 border-t bg-white flex gap-2">
+  <div
+  class="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto p-3
+         border-t bg-white flex gap-2 z-20">
     <input
       id="user-input"
       class="flex-1 p-3 border rounded-xl outline-none"
