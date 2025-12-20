@@ -1,80 +1,127 @@
 export async function onRequestPost({ request, env }) {
   try {
-    const body = await request.json();
-    const userMessages = Array.isArray(body.messages) ? body.messages : [];
-    const lastMsg = userMessages[userMessages.length - 1]?.content?.toLowerCase() || "";
+    /* =========================
+       VALIDASI BODY
+    ========================= */
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400 }
+      );
+    }
 
-    // ============================
-    // DETEKSI MODE KHUSUS APLIKASI
-    // ============================
-    const isZedMode =
-      [
-        "zedkalkulator", "zed kalkulator", "zedose", "zed ai",
-        "ebv", "abl", "mabl", "syringe pump", "kalkulator infus",
-        "pengenceran obat", "aplikasi zed"
-      ].some(k => lastMsg.includes(k));
+    const userMessages = Array.isArray(body.messages)
+      ? body.messages.slice(-10) // batasi riwayat
+      : [];
 
-    // ============================
-    // SYSTEM PROMPT DINAMIS
-    // ============================
-    const basePrompt = `
-Anda adalah ZedAI, asisten cerdas. Anda dapat menjawab semua hal secara bebas, ramah, dan natural.
+    if (!userMessages.length) {
+      return new Response(
+        JSON.stringify({ error: "Messages kosong" }),
+        { status: 400 }
+      );
+    }
 
-Namun jika pengguna bertanya tentang ZEDKalkulator, Anda harus masuk MODE ZEDKALKULATOR:
+    const lastMsg =
+      userMessages[userMessages.length - 1]?.content?.toLowerCase() || "";
 
-• Jawaban harus akurat sesuai fitur asli:
-  - Kalkulator Tetesan Infus
-  - Kalkulator Syringe Pump
-  - Protap Insulin
-  - Pengenceran Obat
-  - EBV, ABL, MABL
-  - Asisten berbasis AI
-• Jangan menambah fitur palsu.
-• Jika ditanya siapa pembuatnya → jawab:
-  "ZEDKalkulator dan ZedAI dibuat oleh Muhammad Khairul Zed, S.Kep.,Ners."
-`;
+    /* =========================
+       DETEKSI MODE ZED
+    ========================= */
+    const ZED_KEYWORDS = [
+      "zedkalkulator", "zed kalkulator", "zedose", "zed ai",
+      "ebv", "abl", "mabl",
+      "syringe pump", "kalkulator infus",
+      "pengenceran obat", "aplikasi zed"
+    ];
 
-    const finalPrompt = isZedMode
-      ? basePrompt + "\n(SAAT INI MODE ZEDKALKULATOR AKTIF)"
-      : basePrompt + "\n(SAAT INI MODE BEBAS AKTIF)";
+    const isZedMode = ZED_KEYWORDS.some(k => lastMsg.includes(k));
 
+    /* =========================
+       SYSTEM PROMPT RINGKAS
+    ========================= */
     const systemPrompt = {
       role: "system",
-      content: finalPrompt
+      content: isZedMode
+        ? `Anda adalah ZedAI, asisten resmi ZEDKalkulator.
+
+Jawaban harus AKURAT sesuai fitur asli:
+- Tetesan Infus
+- Syringe Pump
+- Insulin
+- Pengenceran Obat
+- EBV / ABL / MABL
+
+Jangan menambah fitur palsu.
+Jika ditanya pembuatnya, jawab:
+"ZEDKalkulator dan ZedAI dibuat oleh Muhammad Khairul Zed, S.Kep., Ners."`
+        : `Anda adalah ZedAI, asisten AI yang ramah, informatif, dan natural.`
     };
 
     const messages = [systemPrompt, ...userMessages];
 
-    // ============================
-    // KIRIM KE GROQ
-    // ============================
-    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${env.GROQ_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "llama-3.1-70b-versatile",
-        messages,
-        temperature: 0.8,
-      })
-    });
+    /* =========================
+       TIMEOUT FETCH
+    ========================= */
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20_000);
+
+    const groqRes = await fetch(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          "Authorization": `Bearer ${env.GROQ_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "llama-3.1-70b-versatile",
+          messages,
+          temperature: 0.7,
+          max_tokens: 800
+        })
+      }
+    );
+
+    clearTimeout(timeout);
 
     if (!groqRes.ok) {
-      return new Response(JSON.stringify({ error: "Groq Error" }), { status: 500 });
+      const errText = await groqRes.text();
+      return new Response(
+        JSON.stringify({ error: "Groq API Error", detail: errText }),
+        { status: 502 }
+      );
     }
 
     const groqData = await groqRes.json();
-    const reply = groqData?.choices?.[0]?.message?.content || "Maaf, tidak ada jawaban.";
 
-    return new Response(JSON.stringify({ reply }), {
-      headers: { "Content-Type": "application/json" }
-    });
+    if (!groqData.choices?.length) {
+      return new Response(
+        JSON.stringify({ error: "Empty response from Groq" }),
+        { status: 502 }
+      );
+    }
+
+    const reply = groqData.choices[0].message?.content
+      || "Maaf, saya belum bisa menjawab.";
+
+    return new Response(
+      JSON.stringify({ reply }),
+      { headers: { "Content-Type": "application/json" } }
+    );
 
   } catch (err) {
-    return new Response(JSON.stringify({ error: "Server Error", detail: String(err) }), {
-      status: 500
-    });
+    return new Response(
+      JSON.stringify({
+        error: "Server Error",
+        detail: err?.name === "AbortError"
+          ? "Request timeout"
+          : String(err)
+      }),
+      { status: 500 }
+    );
   }
 }
