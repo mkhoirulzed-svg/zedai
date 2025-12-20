@@ -55,28 +55,11 @@ const greetings = [
 
 if (greetings.some(g => userText === g || userText.startsWith(g))) {
   // langsung lanjut ke AI, jangan diblok
-} else if (!allowedKeywords.some(w => userText.includes(w))) {
-  return new Response(
-    JSON.stringify({
-      reply:
-        "Maaf, saya hanya bisa menjawab topik medis, keperawatan, dan ZEDKalkulator."
-    }),
-    { headers: { "Content-Type": "application/json" } }
-  );
-}
-
+} 
     
 // Jika pertanyaan umum → lewati filter keyword
 if (isFreeMode) {
   // lanjut ke AI tanpa ditolak
-} else if (!allowedKeywords.some(w => userText.includes(w))) {
-  return new Response(
-    JSON.stringify({
-      reply:
-        "Maaf, saya hanya bisa menjawab topik medis, keperawatan, dan zedkalkulator."
-    }),
-    { headers: { "Content-Type": "application/json" } }
-  );
 }
 
    const isMedicalTopic = allowedKeywords.some(w =>
@@ -102,15 +85,26 @@ const identityKeywords = [
 
 if (identityKeywords.some(k => userText.includes(k))) {
   // lanjut ke logika jawaban pembuat
-} else if (!allowedKeywords.some(w => userText.includes(w))) {
+}
+
+  // ============================================
+//   FILTER FINAL (SATU-SATUNYA PENOLAKAN)
+// ============================================
+const allowBypass =
+  greetings.some(g => userText.startsWith(g)) ||
+  identityKeywords.some(k => userText.includes(k)) ||
+  isFreeMode ||
+  allowedKeywords.some(w => userText.includes(w));
+
+if (!allowBypass) {
   return new Response(
     JSON.stringify({
-      reply:
-        "Maaf, saya hanya bisa menjawab topik medis, keperawatan, dan ZEDKalkulator."
+      reply: "Maaf, saya tidak bisa menjawab topik tersebut."
     }),
     { headers: { "Content-Type": "application/json" } }
   );
 }
+
 
   
     // ==================================================
