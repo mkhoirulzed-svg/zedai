@@ -52,6 +52,8 @@ export async function onRequestPost({ request, env }) {
       "pengenceran obat": [
         "Konversi mg ke ml",
         "Perhitungan pengenceran obat injeksi"
+        "Protap insulin"
+    "Zed AI"
       ]
     };
 
