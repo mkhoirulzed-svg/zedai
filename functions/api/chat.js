@@ -43,6 +43,29 @@ const isFreeMode = freeModeKeywords.some(k =>
   userText.startsWith(k) || userText.includes(k)
 );
 
+    // ============================================
+//   WHITELIST SAPAAN & OBROLAN RINGAN
+// ============================================
+const greetings = [
+  "halo", "hai", "hello", "hi",
+  "assalamualaikum", "selamat pagi",
+  "selamat siang", "selamat sore",
+  "selamat malam"
+];
+
+if (greetings.some(g => userText === g || userText.startsWith(g))) {
+  // langsung lanjut ke AI, jangan diblok
+} else if (!allowedKeywords.some(w => userText.includes(w))) {
+  return new Response(
+    JSON.stringify({
+      reply:
+        "Maaf, saya hanya bisa menjawab topik medis, keperawatan, dan ZEDKalkulator."
+    }),
+    { headers: { "Content-Type": "application/json" } }
+  );
+}
+
+    
 // Jika pertanyaan umum → lewati filter keyword
 if (isFreeMode) {
   // lanjut ke AI tanpa ditolak
