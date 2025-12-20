@@ -4,29 +4,39 @@ export async function onRequestPost({ request, env }) {
     const body = await request.json();
     const userMessages = Array.isArray(body.messages) ? body.messages : [];
 
-    // SYSTEM PROMPT AMAN TANPA KARAKTER BERBAHAYA
+    // ================================
+    // System Prompt secara aman (split)
+    // ================================
+    const promptLines = [
+      "Anda adalah ZedAI, asisten cerdas yang dapat menjawab secara bebas.",
+      "",
+      "MODE KHUSUS ZEDKALKULATOR:",
+      "- Aktif jika user bertanya tentang ZEDKalkulator, ZEDose Calc, ZedAI, EBV, ABL, MABL, transfusi, fitur, atau cara pakai aplikasi.",
+      "- Jawaban harus akurat sesuai fitur asli:",
+      "  - Kalkulator Tetesan Infus",
+      "  - Kalkulator Syringe Pump",
+      "  - Protap Insulin",
+      "  - Pengenceran obat",
+      "  - EBV, ABL, MABL",
+      "  - Asisten berbasis AI",
+      "- Jangan membuat fitur fiktif.",
+      "- Jika user bertanya siapa pembuat ZedAI atau ZEDKalkulator:",
+      "  Jawab: ZEDKalkulator dan ZedAI dibuat oleh Muhammad Khairul Zed, S.Kep.,Ners.",
+      "",
+      "MODE BEBAS:",
+      "- Jika bukan terkait aplikasi, Anda boleh menjawab secara natural dan kreatif."
+    ];
+
     const systemPrompt = {
       role: "system",
-      content:
-"Anda adalah ZedAI, asisten cerdas yang dapat menjawab secara bebas dan variatif.\n\n" +
-"MODE KHUSUS ZEDKALKULATOR\n" +
-"- Mode khusus aktif jika user bertanya tentang ZEDKalkulator, ZEDose Calc, ZedAI, EBV, ABL, MABL, transfusi, fitur, atau cara pakai aplikasi.\n" +
-"- Jawaban harus akurat sesuai fitur asli aplikasi:\n" +
-"  - Kalkulator Tetesan Infus\n" +
-"  - Kalkulator Syringe Pump\n" +
-"  - Protap Insulin\n" +
-"  - Pengenceran obat\n" +
-"  - EBV, ABL, MABL\n" +
-"  - Asisten berbasis AI\n" +
-"- Jangan membuat atau menambahkan fitur fiktif.\n" +
-"- Jika user bertanya siapa pembuat ZedAI atau ZEDKalkulator, jawab selalu:\n" +
-"  ZEDKalkulator dan ZedAI dibuat oleh Muhammad Khairul Zed, S.Kep.,Ners.\n\n" +
-"MODE BEBAS\n" +
-"- Jika pertanyaan tidak terkait aplikasi ZEDKalkulator, Anda boleh menjawab secara bebas, kreatif, dan natural.\n"
+      content: promptLines.join("\n")
     };
 
     const messages = [systemPrompt, ...userMessages];
 
+    // ================================
+    // KIRIM KE GROQ
+    // ================================
     const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -37,35 +47,32 @@ export async function onRequestPost({ request, env }) {
         model: "llama-3.1-70b-versatile",
         messages,
         temperature: 0.8,
-        max_tokens: 1024
+        max_tokens: 800 // kurangi agar tidak memicu crash
       })
     });
 
     if (!groqRes.ok) {
-      return new Response(
-        JSON.stringify({
-          error: "Groq API error",
-          detail: await groqRes.text()
-        }),
-        { status: 500 }
-      );
+      const txt = await groqRes.text();
+      return new Response(JSON.stringify({ error: "Groq API Error", detail: txt }), {
+        status: 500
+      });
     }
 
     const groqData = await groqRes.json();
-    const reply = groqData?.choices?.[0]?.message?.content || "";
 
-    return new Response(JSON.stringify({ reply }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" }
+    // Proteksi tambahan agar Worker tidak crash
+    const replyContent =
+      groqData?.choices?.[0]?.message?.content || "Maaf, tidak ada jawaban.";
+
+    return new Response(JSON.stringify({ reply: replyContent }), {
+      headers: { "Content-Type": "application/json" },
+      status: 200
     });
 
   } catch (err) {
-    return new Response(
-      JSON.stringify({
-        error: "Server error",
-        detail: String(err)
-      }),
-      { status: 500 }
-    );
+    return new Response(JSON.stringify({
+      error: "Server error",
+      detail: err?.message || String(err)
+    }), { status: 500 });
   }
 }
