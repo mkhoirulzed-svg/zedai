@@ -26,7 +26,7 @@ export async function onRequestPost({ request, env }) {
 
 Silakan pilih layanan:
 
-1️⃣ Admin AI (cek harga & info produk)
+1️⃣ Admin AI (cek harga & stok produk)
 2️⃣ Chat Admin (langsung dengan tim kami)
 
 Ketik *1* atau *2* ya kak 😊`
@@ -42,14 +42,14 @@ Ketik *1* atau *2* ya kak 😊`
       return new Response(
         JSON.stringify({
           reply:
-            "Baik kak 🙏 Saya hubungkan langsung ke admin Alkes PKY ya. Silakan tunggu sebentar."
+            "Baik kak 🙏 Saya hubungkan langsung ke admin Alkes PKY ya. Silakan tunggu sebentar 😊"
         }),
         { headers: { "Content-Type": "application/json" } }
       );
     }
 
     // ==================================================
-    // 🔹 JIKA BELUM PILIH 1 → ARAHKAN KE MENU
+    // 🔹 JIKA BELUM PILIH 1
     // ==================================================
     if (userText !== "1" && messages.length === 1) {
       return new Response(
@@ -91,30 +91,7 @@ Ketik *1* atau *2* ya kak 😊`
     }
 
     // ==================================================
-    // 🔹 KHUSUS PERTANYAAN STOK → ADMIN
-    // ==================================================
-    const stockKeywords = [
-      "stok",
-      "ready",
-      "tersedia",
-      "masih ada",
-      "ada barang",
-      "kosong",
-      "habis"
-    ];
-
-    if (stockKeywords.some(k => userText.includes(k))) {
-      return new Response(
-        JSON.stringify({
-          reply:
-            "Untuk memastikan ketersediaan stok yang paling akurat 🙏 Saya bantu cekkan langsung ke admin ya kak."
-        }),
-        { headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    // ==================================================
-    // 🔹 FETCH DATA DARI SPREADSHEET (SAFE MODE)
+    // 🔹 FETCH DATA DARI SPREADSHEET
     // ==================================================
     const productRes = await fetch("https://script.google.com/macros/s/AKfycbxsxv2jLktEIgPWx-xWl0vPrRy7gux5961LmKvwJNeXu6FtqqgmuAoSAoyw8qSaUdYM/exec");
 
@@ -129,7 +106,7 @@ Ketik *1* atau *2* ya kak 😊`
     }
 
     // ==================================================
-    // 🔹 FILTER PRODUK (ANTI ERROR)
+    // 🔹 FILTER PRODUK (AMAN)
     // ==================================================
     const matchedProducts = products.filter(p => {
       const nama = (p.nama || "").toLowerCase();
@@ -144,20 +121,26 @@ Ketik *1* atau *2* ya kak 😊`
     });
 
     // ==================================================
-    // 🔹 JIKA PRODUK DITEMUKAN → TAMPILKAN HARGA SAJA
+    // 🔹 JIKA PRODUK DITEMUKAN
     // ==================================================
     if (matchedProducts.length > 0) {
-      let reply = "Berikut informasi harganya kak 😊\n\n";
+      let reply = "";
 
       matchedProducts.slice(0, 5).forEach((p, index) => {
         const harga = Number(p["HAGA JUAL TOTAL"] || 0);
+        const stok = Number(p.stok || 0);
 
-        reply += `${index + 1}️⃣ ${p.nama || p.NAMA}\n`;
-        reply += `💰 Rp ${harga.toLocaleString("id-ID")}\n\n`;
+        reply += `${index + 1}️⃣ *${p.nama || p.NAMA}*\n`;
+        reply += `💰 Rp ${harga.toLocaleString("id-ID")}\n`;
+
+        if (stok > 0) {
+          reply += `📦 Stok tersedia: ${stok} pcs\n\n`;
+        } else {
+          reply += `📦 Stok saat ini kosong\n\n`;
+        }
       });
 
-      reply +=
-        "Jika ingin memastikan stok atau melakukan pemesanan, saya bisa hubungkan ke admin ya kak 🙏";
+      reply += "Mau ambil yang mana kak? 😊";
 
       return new Response(JSON.stringify({ reply }), {
         headers: { "Content-Type": "application/json" }
@@ -165,12 +148,12 @@ Ketik *1* atau *2* ya kak 😊`
     }
 
     // ==================================================
-    // 🔹 JIKA TIDAK DITEMUKAN → ADMIN
+    // 🔹 JIKA TIDAK DITEMUKAN
     // ==================================================
     return new Response(
       JSON.stringify({
         reply:
-          "Untuk memastikan produk yang kakak maksud 🙏 Saya bantu hubungkan langsung ke admin Alkes PKY ya."
+          "Untuk memastikan produk yang kakak maksud 🙏 Saya bantu hubungkan langsung ke admin Alkes PKY ya 😊"
       }),
       { headers: { "Content-Type": "application/json" } }
     );
