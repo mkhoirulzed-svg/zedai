@@ -46,6 +46,31 @@ export async function onRequestPost({ request }) {
         { headers: { "Content-Type": "application/json" } }
       );
     }
+    
+// ==================================================
+// 🔹 DETEKSI LANJUTAN PROSES
+// ==================================================
+const processKeywords = [
+  "iya",
+  "ya",
+  "mau",
+  "lanjut",
+  "proses",
+  "ambil",
+  "jadi",
+  "oke",
+  "ok"
+];
+
+if (processKeywords.includes(userText)) {
+  return new Response(
+    JSON.stringify({
+      reply:
+        "Baik kak 🙏 Untuk proses pemesanan saya hubungkan langsung ke admin Alkes PKY ya 😊"
+    }),
+    { headers: { "Content-Type": "application/json" } }
+  );
+}
 
     // ==================================================
     // 🔹 FETCH DATA PRODUK
