@@ -4,36 +4,13 @@ export async function onRequestPost({ request, env }) {
     const messages = body.messages || [];
 
     const userText =
-      messages[messages.length - 1]?.content?.toLowerCase() || "";
+      messages[messages.length - 1]?.content?.toLowerCase().trim() || "";
 
     // ==================================================
-    // 🔹 KEYWORD PRODUK ALKES
-    // ==================================================
-    const allowedKeywords = [
-      "tensimeter",
-      "stetoskop",
-      "strip gula",
-      "gula darah",
-      "kolesterol",
-      "asam urat",
-      "termometer",
-      "nebulizer",
-      "kursi roda",
-      "alat kesehatan",
-      "alat medis",
-      "alkes",
-      "pk y",
-      "palangkaraya",
-      "palangka raya",
-      "harga",
-      "stok"
-    ];
-
-    // ==================================================
-    // 🔹 SAPAAN (DIBOLEHKAN)
+    // 🔹 MENU AWAL
     // ==================================================
     const greetings = [
-      "halo", "hai", "hello", "hi",
+      "", "halo", "hai", "hello", "hi",
       "assalamualaikum",
       "selamat pagi",
       "selamat siang",
@@ -41,8 +18,56 @@ export async function onRequestPost({ request, env }) {
       "selamat malam"
     ];
 
+    if (greetings.includes(userText)) {
+      return new Response(
+        JSON.stringify({
+          reply:
+`Selamat datang di *Alkes PKY* 🙏
+
+Silakan pilih layanan:
+
+1️⃣ Asisten AI (tanya produk & rekomendasi)
+2️⃣ Chat Admin (langsung ke tim kami)
+
+Ketik *1* atau *2* ya.`
+        }),
+        { headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     // ==================================================
-    // 🔹 ESCALATION KE ADMIN
+    // 🔹 PILIH ADMIN
+    // ==================================================
+    if (userText === "2") {
+      return new Response(
+        JSON.stringify({
+          reply:
+"Baik 🙏 Saya hubungkan ke admin Alkes PKY sekarang ya.\nSilakan tunggu sebentar."
+        }),
+        { headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // ==================================================
+    // 🔹 JIKA BUKAN 1 → ARAHKAN ULANG
+    // ==================================================
+    if (userText === "menu") {
+      return new Response(
+        JSON.stringify({
+          reply:
+`Silakan pilih layanan:
+
+1️⃣ Asisten AI  
+2️⃣ Chat Admin  
+
+Ketik *1* atau *2* ya 🙏`
+        }),
+        { headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // ==================================================
+    // 🔹 ESCALATION KEYWORDS
     // ==================================================
     const adminKeywords = [
       "admin",
@@ -60,59 +85,45 @@ export async function onRequestPost({ request, env }) {
       return new Response(
         JSON.stringify({
           reply:
-            "Baik 🙏 Saya hubungkan ke admin Alkes PKY ya.\nSilakan tunggu sebentar."
+"Baik 🙏 Untuk proses tersebut, saya hubungkan ke admin Alkes PKY ya.\nSilakan tunggu sebentar."
         }),
         { headers: { "Content-Type": "application/json" } }
       );
     }
 
     // ==================================================
-    // 🔹 FILTER FINAL (TOPIK DI LUAR ALKES DITOLAK)
-    // ==================================================
-    const allowBypass =
-      greetings.some(g => userText.startsWith(g)) ||
-      allowedKeywords.some(w => userText.includes(w));
-
-    if (!allowBypass) {
-      return new Response(
-        JSON.stringify({
-          reply:
-            "Maaf, saya hanya melayani informasi dan penjualan alat kesehatan Alkes PKY (Palangka Raya). 🙏"
-        }),
-        { headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    // ==================================================
-    // 🔹 SYSTEM PROMPT — MODE SALES ALKES PKY
+    // 🔹 SYSTEM PROMPT (AI SALES MODE)
     // ==================================================
     const enhancedSystemPrompt = {
       role: "system",
       content: `
 Anda adalah ZedAI, asisten penjualan resmi Alkes PKY di Palangka Raya.
 
-Tugas Anda:
-- Membantu pelanggan memilih alat kesehatan
-- Memberikan informasi harga dan ketersediaan produk
-- Memberikan rekomendasi sesuai kebutuhan
-- Fokus area Palangka Raya
+Fokus membantu pelanggan memilih alat kesehatan seperti:
+- Tensimeter
+- Stetoskop
+- Strip gula darah
+- Alat cek kolesterol
+- Termometer
+- Nebulizer
+- Kursi roda
+- dan kebutuhan klinik lainnya
 
-Aturan penting:
+Aturan:
 - Jangan mengarang harga atau stok
-- Jika pelanggan ingin negosiasi atau order, arahkan ke admin
-- Jawaban singkat, jelas, profesional, dan seperti sales WhatsApp
-- Jangan membahas topik di luar alat kesehatan
+- Jika tidak yakin, arahkan ke admin
+- Fokus melayani area Palangka Raya
+- Gunakan gaya bahasa singkat seperti chat WhatsApp
+- Berikan rekomendasi dalam bentuk poin bernomor jika perlu
+- Tutup dengan pertanyaan ringan untuk membantu closing
 
-Gaya jawaban:
-- Gunakan poin bernomor jika merekomendasikan produk
-- Tutup dengan pertanyaan ringan untuk closing
-Contoh:
+Contoh penutup:
 "Mau saya bantu pilihkan sesuai kebutuhan?"
-      `
+`
     };
 
     // ==================================================
-    // 🔹 KIRIM KE GROQ API
+    // 🔹 KIRIM KE GROQ
     // ==================================================
     const groqRes = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
@@ -125,7 +136,7 @@ Contoh:
         body: JSON.stringify({
           model: "llama-3.1-8b-instant",
           messages: [enhancedSystemPrompt, ...messages],
-          temperature: 0.2,
+          temperature: 0.3,
           stream: false
         })
       }
