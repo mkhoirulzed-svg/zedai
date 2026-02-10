@@ -3,209 +3,117 @@ export async function onRequestPost({ request, env }) {
     const body = await request.json();
     const messages = body.messages || [];
 
-    // ============================================
-    //   FILTER: Hanya izinkan topik tertentu
-    // ============================================
     const userText =
       messages[messages.length - 1]?.content?.toLowerCase() || "";
 
+    // ==================================================
+    // 🔹 KEYWORD PRODUK ALKES
+    // ==================================================
     const allowedKeywords = [
-      "zedkalkulator", "zedose", "zed ai", "kalkulator infus",
-      "syringe pump", "mabl", "abl", "ebv", "pengenceran obat",
-      "perawat", "keperawatan", "asuhan keperawatan",
-      "diagnosa keperawatan", "intervensi keperawatan",
-      "tindakan keperawatan", "catatan keperawatan",
-      "kesehatan", "medis", "kedokteran", "patofisiologi",
-      "igd", "icu", "nicu", "picu",
-      "vital sign", "tensi", "nadi", "suhu",
-      "dosis", "obat", "infus",
-      "alat medis", "alat kesehatan",
-      "triage", "gawat darurat" "kalkulator kesehatan", "kalkulator medis", "ilmu kedokteran",
-      "alat kesehatan", "rumah sakit",
-      "dunia kedokteran", "dunia keperawatan"
+      "tensimeter",
+      "stetoskop",
+      "strip gula",
+      "gula darah",
+      "kolesterol",
+      "asam urat",
+      "termometer",
+      "nebulizer",
+      "kursi roda",
+      "alat kesehatan",
+      "alat medis",
+      "alkes",
+      "pk y",
+      "palangkaraya",
+      "palangka raya",
+      "harga",
+      "stok"
     ];
 
-    // ============================================
-//   MODE JAWAB BEBAS (NON MEDIS / UMUM)
-// ============================================
-const freeModeKeywords = [
-  "apa itu",
-  "jelaskan",
-  "bagaimana",
-  "kenapa",
-  "mengapa",
-  "contoh",
-  "ringkas",
-  "buatkan",
-  "tolong",
-  "bantu"
-];
-
-const isFreeMode = freeModeKeywords.some(k =>
-  userText.startsWith(k) || userText.includes(k)
-);
-
-    // ============================================
-//   WHITELIST SAPAAN & OBROLAN RINGAN
-// ============================================
-const greetings = [
-  "halo", "hai", "hello", "hi",
-  "assalamualaikum", "selamat pagi",
-  "selamat siang", "selamat sore",
-  "selamat malam"
-];
-
-if (greetings.some(g => userText === g || userText.startsWith(g))) {
-  // langsung lanjut ke AI, jangan diblok
-} 
-    
-// Jika pertanyaan umum → lewati filter keyword
-if (isFreeMode) {
-  // lanjut ke AI tanpa ditolak
-}
-
-// ============================================
-//   BYPASS PERTANYAAN IDENTITAS / PEMBUAT
-// ============================================
-const identityKeywords = [
-  "pembuat",
-  "yang buat",
-  "siapa kamu",
-  "siapa pembuat kamu",
-  "developer",
-  "penyusun",
-  "creator"
-];
-
-if (identityKeywords.some(k => userText.includes(k))) {
-  // lanjut ke logika jawaban pembuat
-}
-
-  // ============================================
-//   FILTER FINAL (SATU-SATUNYA PENOLAKAN)
-// ============================================
-const allowBypass =
-  greetings.some(g => userText.startsWith(g)) ||
-  identityKeywords.some(k => userText.includes(k)) ||
-  isFreeMode ||
-  allowedKeywords.some(w => userText.includes(w));
-
-if (!allowBypass) {
-  return new Response(
-    JSON.stringify({
-      reply: "Maaf, saya tidak bisa menjawab topik tersebut."
-    }),
-    { headers: { "Content-Type": "application/json" } }
-  );
-}
-
-
-  
     // ==================================================
-    //   🔒 SUMBER KEBENARAN FITUR (DITAMBAHKAN)
+    // 🔹 SAPAAN (DIBOLEHKAN)
     // ==================================================
-    const ZED_FEATURES = {
-      "kalkulator infus": [
-        "Hitung tetesan infus (tts/menit)",
-        "Hitung kecepatan infus (ml/jam)",
-        "Konversi tetesan ke flow rate"
-      ],
-      "syringe pump": [
-        "Hitung kecepatan syringe pump (ml/jam)",
-        "Konversi dosis obat ke kecepatan pompa"
-      ],
-      "ebv": ["Perhitungan Estimated Blood Volume (EBV)"],
-      "abl": ["Perhitungan Allowable Blood Loss (ABL)"],
-      "mabl": ["Perhitungan Maximum Allowable Blood Loss (MABL)"],
-      "pengenceran obat": [
-        "Konversi mg ke ml",
-        "Perhitungan pengenceran obat injeksi"
-        ],
-      "Protap insulin":["Protap pemberian SP actrapid berdasarkan gula darah"],
-    "Zed AI": ["asisten AI zedkalkulator"
-      ],
-    };
+    const greetings = [
+      "halo", "hai", "hello", "hi",
+      "assalamualaikum",
+      "selamat pagi",
+      "selamat siang",
+      "selamat sore",
+      "selamat malam"
+    ];
 
     // ==================================================
-    //   🧠 INTERSEP PERTANYAAN FITUR (ANTI SALAH)
+    // 🔹 ESCALATION KE ADMIN
     // ==================================================
-    if (
-      userText.includes("fitur") ||
-      userText.includes("bisa apa") ||
-      userText.includes("fungsi") ||
-      userText.includes("menu")
-    ) {
-      let reply = "**Fitur Resmi ZEDKalkulator:**\n\n";
+    const adminKeywords = [
+      "admin",
+      "nego",
+      "harga terakhir",
+      "grosir",
+      "ambil banyak",
+      "cod",
+      "transfer",
+      "order",
+      "pesan sekarang"
+    ];
 
-      for (const [fitur, list] of Object.entries(ZED_FEATURES)) {
-        reply += `🔹 **${fitur.toUpperCase()}**\n`;
-        list.forEach(item => {
-          reply += `- ${item}\n`;
-        });
-        reply += "\n";
-      }
-
-      return new Response(
-        JSON.stringify({ reply }),
-        { headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    // ============================================
-    //   Jawaban khusus: Pembuat aplikasi
-    // ============================================
-    if (
-      userText.includes("pembuat") ||
-      userText.includes("developer") ||
-      userText.includes("yang buat") ||
-      userText.includes("siapa pembuat")
-    ) {
+    if (adminKeywords.some(k => userText.includes(k))) {
       return new Response(
         JSON.stringify({
           reply:
-            "Aplikasi zedKalkulator dibuat dan disusun oleh **Muhammad Khairul Zed, S.Kep., Ners**."
+            "Baik 🙏 Saya hubungkan ke admin Alkes PKY ya.\nSilakan tunggu sebentar."
         }),
         { headers: { "Content-Type": "application/json" } }
       );
     }
 
-    // ============================================
-    //   SYSTEM PROMPT (DIKUNCI)
-    // ============================================
+    // ==================================================
+    // 🔹 FILTER FINAL (TOPIK DI LUAR ALKES DITOLAK)
+    // ==================================================
+    const allowBypass =
+      greetings.some(g => userText.startsWith(g)) ||
+      allowedKeywords.some(w => userText.includes(w));
+
+    if (!allowBypass) {
+      return new Response(
+        JSON.stringify({
+          reply:
+            "Maaf, saya hanya melayani informasi dan penjualan alat kesehatan Alkes PKY (Palangka Raya). 🙏"
+        }),
+        { headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // ==================================================
+    // 🔹 SYSTEM PROMPT — MODE SALES ALKES PKY
+    // ==================================================
     const enhancedSystemPrompt = {
       role: "system",
       content: `
-Anda adalah ZedAI, asisten resmi aplikasi zedKalkulator.
+Anda adalah ZedAI, asisten penjualan resmi Alkes PKY di Palangka Raya.
 
-Fitur resmi ZEDKalkulator HANYA:
-- Kalkulator infus
-- Syringe pump
-- EBV, ABL, MABL
-- Pengenceran obat
-- Protap Insulin
-- Ai zedcalc
-Jangan menyebut fitur lain di luar daftar.
-Jika ragu, katakan "fitur tersebut belum tersedia".
+Tugas Anda:
+- Membantu pelanggan memilih alat kesehatan
+- Memberikan informasi harga dan ketersediaan produk
+- Memberikan rekomendasi sesuai kebutuhan
+- Fokus area Palangka Raya
 
-Anda BOLEH berinteraksi secara dua arah dengan pengguna.
-Jika relevan, Anda BOLEH:
-- Mengajukan satu pertanyaan klarifikasi
-- Mengajak diskusi ringan
-- Menggunakan bahasa santai untuk cerita, lelucon, atau edukasi keperawatan
-Jangan bertanya berlebihan dan jangan memberikan keputusan medis.
+Aturan penting:
+- Jangan mengarang harga atau stok
+- Jika pelanggan ingin negosiasi atau order, arahkan ke admin
+- Jawaban singkat, jelas, profesional, dan seperti sales WhatsApp
+- Jangan membahas topik di luar alat kesehatan
 
-Berikan jawaban profesional dan edukatif.
-Anda BOLEH menjawab secara kreatif
-SELAMA:
-- Masih berkaitan dengan keperawatan, kesehatan, atau dunia medis
-- Tidak memberikan keputusan klinis atau instruksi medis langsung
-
-`
+Gaya jawaban:
+- Gunakan poin bernomor jika merekomendasikan produk
+- Tutup dengan pertanyaan ringan untuk closing
+Contoh:
+"Mau saya bantu pilihkan sesuai kebutuhan?"
+      `
     };
 
-    // ============================================
-    //       KIRIM KE GROQ API
-    // ============================================
+    // ==================================================
+    // 🔹 KIRIM KE GROQ API
+    // ==================================================
     const groqRes = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
       {
@@ -217,7 +125,7 @@ SELAMA:
         body: JSON.stringify({
           model: "llama-3.1-8b-instant",
           messages: [enhancedSystemPrompt, ...messages],
-          temperature: 0.3, // 🔥 lebih akurat
+          temperature: 0.2,
           stream: false
         })
       }
