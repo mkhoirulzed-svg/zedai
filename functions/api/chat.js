@@ -7,7 +7,65 @@ export async function onRequestPost({ request, env }) {
       messages[messages.length - 1]?.content?.toLowerCase().trim() || "";
 
     // ==================================================
-    // 🔹 KEYWORD ADMIN (NEGOSIASI / TRANSAKSI)
+    // 🔹 MENU AWAL
+    // ==================================================
+    const greetings = [
+      "", "halo", "hai", "hello", "hi",
+      "assalamualaikum",
+      "selamat pagi",
+      "selamat siang",
+      "selamat sore",
+      "selamat malam"
+    ];
+
+    if (greetings.includes(userText)) {
+      return new Response(
+        JSON.stringify({
+          reply:
+`Selamat datang di *Alkes PKY* 🙏
+
+Silakan pilih layanan:
+
+1️⃣ Admin AI (cek harga & info produk)
+2️⃣ Chat Admin (langsung dengan tim kami)
+
+Ketik *1* atau *2* ya kak 😊`
+        }),
+        { headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // ==================================================
+    // 🔹 PILIH CHAT ADMIN
+    // ==================================================
+    if (userText === "2") {
+      return new Response(
+        JSON.stringify({
+          reply:
+            "Baik kak 🙏 Saya hubungkan langsung ke admin Alkes PKY ya. Silakan tunggu sebentar."
+        }),
+        { headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // ==================================================
+    // 🔹 JIKA BELUM PILIH 1 → ARAHKAN KE MENU
+    // ==================================================
+    if (userText !== "1" && messages.length === 1) {
+      return new Response(
+        JSON.stringify({
+          reply:
+`Silakan pilih layanan terlebih dahulu ya kak 😊
+
+1️⃣ Admin AI  
+2️⃣ Chat Admin`
+        }),
+        { headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // ==================================================
+    // 🔹 ESCALATION NEGOSIASI / TRANSAKSI
     // ==================================================
     const adminKeywords = [
       "admin",
@@ -26,14 +84,14 @@ export async function onRequestPost({ request, env }) {
       return new Response(
         JSON.stringify({
           reply:
-            "Baik kak 🙏 Untuk proses tersebut saya bantu hubungkan langsung ke admin Alkes PKY ya."
+            "Untuk proses tersebut saya bantu hubungkan langsung ke admin ya kak 🙏"
         }),
         { headers: { "Content-Type": "application/json" } }
       );
     }
 
     // ==================================================
-    // 🔹 KHUSUS PERTANYAAN STOK / KETERSEDIAAN
+    // 🔹 KHUSUS PERTANYAAN STOK → ADMIN
     // ==================================================
     const stockKeywords = [
       "stok",
@@ -49,26 +107,41 @@ export async function onRequestPost({ request, env }) {
       return new Response(
         JSON.stringify({
           reply:
-            "Untuk memastikan ketersediaan stok yang paling akurat 🙏\nSaya bantu cekkan langsung ke admin Alkes PKY ya kak."
+            "Untuk memastikan ketersediaan stok yang paling akurat 🙏 Saya bantu cekkan langsung ke admin ya kak."
         }),
         { headers: { "Content-Type": "application/json" } }
       );
     }
 
     // ==================================================
-    // 🔹 FETCH DATA PRODUK DARI SPREADSHEET
+    // 🔹 FETCH DATA DARI SPREADSHEET (SAFE MODE)
     // ==================================================
     const productRes = await fetch("https://script.google.com/macros/s/AKfycbxsxv2jLktEIgPWx-xWl0vPrRy7gux5961LmKvwJNeXu6FtqqgmuAoSAoyw8qSaUdYM/exec");
-    const products = await productRes.json();
+
+    if (!productRes.ok) {
+      throw new Error("Gagal fetch spreadsheet");
+    }
+
+    let products = await productRes.json();
+
+    if (!Array.isArray(products)) {
+      products = products.data || [];
+    }
 
     // ==================================================
-    // 🔹 FILTER PRODUK BERDASARKAN NAMA / MERK
+    // 🔹 FILTER PRODUK (ANTI ERROR)
     // ==================================================
-    const matchedProducts = products.filter(p =>
-      p.nama?.toLowerCase().includes(userText) ||
-      p.NAMA?.toLowerCase().includes(userText) ||
-      p.merk?.toLowerCase().includes(userText)
-    );
+    const matchedProducts = products.filter(p => {
+      const nama = (p.nama || "").toLowerCase();
+      const nama2 = (p.NAMA || "").toLowerCase();
+      const merk = (p.merk || "").toLowerCase();
+
+      return (
+        nama.includes(userText) ||
+        nama2.includes(userText) ||
+        merk.includes(userText)
+      );
+    });
 
     // ==================================================
     // 🔹 JIKA PRODUK DITEMUKAN → TAMPILKAN HARGA SAJA
@@ -77,11 +150,14 @@ export async function onRequestPost({ request, env }) {
       let reply = "Berikut informasi harganya kak 😊\n\n";
 
       matchedProducts.slice(0, 5).forEach((p, index) => {
-        reply += `${index + 1}️⃣ ${p.nama}\n`;
-        reply += `💰 Rp ${Number(p["HAGA JUAL TOTAL"]).toLocaleString("id-ID")}\n\n`;
+        const harga = Number(p["HAGA JUAL TOTAL"] || 0);
+
+        reply += `${index + 1}️⃣ ${p.nama || p.NAMA}\n`;
+        reply += `💰 Rp ${harga.toLocaleString("id-ID")}\n\n`;
       });
 
-      reply += "Jika ingin memastikan stok atau melakukan pemesanan, saya bisa hubungkan ke admin ya kak 🙏";
+      reply +=
+        "Jika ingin memastikan stok atau melakukan pemesanan, saya bisa hubungkan ke admin ya kak 🙏";
 
       return new Response(JSON.stringify({ reply }), {
         headers: { "Content-Type": "application/json" }
@@ -94,14 +170,14 @@ export async function onRequestPost({ request, env }) {
     return new Response(
       JSON.stringify({
         reply:
-          "Untuk memastikan produk yang kakak maksud 🙏\nSaya bantu hubungkan langsung ke admin Alkes PKY ya."
+          "Untuk memastikan produk yang kakak maksud 🙏 Saya bantu hubungkan langsung ke admin Alkes PKY ya."
       }),
       { headers: { "Content-Type": "application/json" } }
     );
 
   } catch (err) {
     return new Response(
-      JSON.stringify({ error: "Server error", detail: String(err) }),
+      JSON.stringify({ error: String(err) }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
