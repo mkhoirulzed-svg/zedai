@@ -2,8 +2,10 @@ export async function onRequestPost({ request, env }) {
   try {
     const body = await request.json();
     const messages = body.messages || [];
+
     const userMessage =
       messages[messages.length - 1]?.content?.trim() || "";
+
     const userText = userMessage.toLowerCase();
 
     // ==================================================
@@ -19,6 +21,21 @@ export async function onRequestPost({ request, env }) {
         JSON.stringify({
           reply:
             "Baik kak 🙏 Untuk proses tersebut saya hubungkan langsung ke admin Alkes PKY ya 😊"
+        }),
+        { headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // ==================================================
+    // 🔹 SAPAAN SAJA
+    // ==================================================
+    const greetings = ["halo","hai","hi","hello","assalamualaikum"];
+
+    if (greetings.includes(userText)) {
+      return new Response(
+        JSON.stringify({
+          reply:
+            "Halo kak 😊 Silakan sebutkan produk alat kesehatan yang kakak cari ya 🙏"
         }),
         { headers: { "Content-Type": "application/json" } }
       );
@@ -67,49 +84,30 @@ export async function onRequestPost({ request, env }) {
     });
 
     // ==================================================
-    // 🔹 JIKA USER TANYA HARGA → WAJIB DARI SPREADSHEET
+    // 🔹 DETEKSI APAKAH INI PRODUCT QUERY
     // ==================================================
-    const isPriceQuery =
-      userText.includes("harga") ||
-      userText.includes("berapa") ||
-      userText.includes("rp");
+    const productQueryTriggers = [
+      "ada","cari","punya","jual","tersedia",
+      "termometer","tensimeter","omron",
+      "stetoskop","strip","nebulizer"
+    ];
 
-    if (isPriceQuery) {
-      if (matchedProducts.length > 0) {
-        let reply = "Berikut informasi harganya kak 😊\n\n";
-
-        matchedProducts.slice(0, 5).forEach((p, index) => {
-          const harga = Number(p["HAGA JUAL TOTAL"] || 0);
-          reply += `${index + 1}️⃣ *${p.nama || p.NAMA}*\n`;
-          reply += `💰 Rp ${harga.toLocaleString("id-ID")}\n\n`;
-        });
-
-        reply += "Mau saya bantu proses kak? 😊";
-
-        return new Response(JSON.stringify({ reply }), {
-          headers: { "Content-Type": "application/json" }
-        });
-      }
-
-      // kalau tanya harga tapi tidak ketemu produk
-      return new Response(
-        JSON.stringify({
-          reply:
-            "Untuk memastikan harga produk tersebut 🙏 Saya bantu cekkan langsung ke admin Alkes PKY ya kak 😊"
-        }),
-        { headers: { "Content-Type": "application/json" } }
-      );
-    }
+    const isProductQuery =
+      productQueryTriggers.some(k => userText.includes(k)) ||
+      userWords.length > 0;
 
     // ==================================================
-    // 🔹 JIKA PRODUK DITEMUKAN (TANPA HARGA)
+    // 🔹 JIKA PRODUK DITEMUKAN
     // ==================================================
     if (matchedProducts.length > 0) {
       let reply = "Ada kak 😊 Berikut detail produknya:\n\n";
 
       matchedProducts.slice(0, 5).forEach((p, index) => {
+        const harga = Number(p["HAGA JUAL TOTAL"] || 0);
         const stok = Number(p.stok || 0);
+
         reply += `${index + 1}️⃣ *${p.nama || p.NAMA}*\n`;
+        reply += `💰 Rp ${harga.toLocaleString("id-ID")}\n`;
 
         if (stok > 0) {
           reply += `📦 Stok tersedia: ${stok} pcs\n\n`;
@@ -118,7 +116,7 @@ export async function onRequestPost({ request, env }) {
         }
       });
 
-      reply += "Jika ingin info harga, kakak bisa tanyakan ya 😊";
+      reply += "Mau dibantu proses kak? 😊";
 
       return new Response(JSON.stringify({ reply }), {
         headers: { "Content-Type": "application/json" }
@@ -126,16 +124,27 @@ export async function onRequestPost({ request, env }) {
     }
 
     // ==================================================
-    // 🔹 PERTANYAAN UMUM → BARU PAKAI AI
+    // 🔹 JIKA PRODUCT QUERY TAPI TIDAK DITEMUKAN
+    // ==================================================
+    if (isProductQuery) {
+      return new Response(
+        JSON.stringify({
+          reply:
+            "Untuk memastikan produk tersebut 🙏 Saya bantu cekkan langsung ke admin Alkes PKY ya kak 😊"
+        }),
+        { headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // ==================================================
+    // 🔹 PERTANYAAN UMUM (BARU PAKAI AI)
     // ==================================================
     const systemPrompt = {
       role: "system",
       content: `
 Anda adalah asisten Alkes PKY.
-
-Jawab natural dan ramah seperti admin marketplace.
-JANGAN PERNAH menyebut harga atau stok.
-Jika pertanyaan menyangkut harga, arahkan ke admin.
+Jawab natural dan ramah.
+Jangan menyebut harga atau stok.
 `
     };
 
