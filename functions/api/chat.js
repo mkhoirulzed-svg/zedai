@@ -1,4 +1,4 @@
-export async function onRequestPost({ request, env }) {
+export async function onRequestPost({ request }) {
   try {
     const body = await request.json();
     const messages = body.messages || [];
@@ -15,7 +15,7 @@ export async function onRequestPost({ request, env }) {
       return new Response(
         JSON.stringify({
           reply:
-            "Halo kak 😊 Selamat datang di Alkes PKY.\nSilakan tanya produk yang kakak cari ya 🙏"
+            "Halo kak 😊 Selamat datang di Alkes PKY.\nSilakan sebutkan produk yang kakak cari ya 🙏"
         }),
         { headers: { "Content-Type": "application/json" } }
       );
@@ -57,38 +57,24 @@ export async function onRequestPost({ request, env }) {
     }
 
     let products = await productRes.json();
-
     if (!Array.isArray(products)) {
       products = products.data || [];
     }
 
     // ==================================================
-    // 🔹 DETEKSI APAKAH USER SEDANG MENCARI PRODUK
+    // 🔹 FLEXIBLE WORD MATCHING
     // ==================================================
-    const isProductQuery = products.some(p => {
-      const nama = (p.nama || "").toLowerCase();
-      const nama2 = (p.NAMA || "").toLowerCase();
-      const merk = (p.merk || "").toLowerCase();
+    const userWords = userText.split(/\s+/);
 
-      return (
-        userText.includes(nama) ||
-        userText.includes(nama2) ||
-        userText.includes(merk)
-      );
-    });
-
-    // ==================================================
-    // 🔹 FILTER PRODUK
-    // ==================================================
     const matchedProducts = products.filter(p => {
       const nama = (p.nama || "").toLowerCase();
       const nama2 = (p.NAMA || "").toLowerCase();
       const merk = (p.merk || "").toLowerCase();
 
-      return (
-        nama.includes(userText) ||
-        nama2.includes(userText) ||
-        merk.includes(userText)
+      return userWords.some(word =>
+        nama.includes(word) ||
+        nama2.includes(word) ||
+        merk.includes(word)
       );
     });
 
@@ -120,20 +106,7 @@ export async function onRequestPost({ request, env }) {
     }
 
     // ==================================================
-    // 🔹 JIKA TIDAK ADA MATCH TAPI JUGA BUKAN PRODUK
-    // ==================================================
-    if (!isProductQuery) {
-      return new Response(
-        JSON.stringify({
-          reply:
-            "Siap kak 😊 Silakan sebutkan nama produk alat kesehatan yang kakak cari ya 🙏"
-        }),
-        { headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    // ==================================================
-    // 🔹 JIKA PRODUK DICARI TAPI TIDAK ADA DI DATA
+    // 🔹 JIKA TIDAK ADA MATCH → LEBIH NATURAL
     // ==================================================
     return new Response(
       JSON.stringify({
