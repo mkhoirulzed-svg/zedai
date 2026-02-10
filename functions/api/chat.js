@@ -7,67 +7,7 @@ export async function onRequestPost({ request, env }) {
       messages[messages.length - 1]?.content?.toLowerCase().trim() || "";
 
     // ==================================================
-    // 🔹 MENU AWAL
-    // ==================================================
-    const greetings = [
-      "", "halo", "hai", "hello", "hi",
-      "assalamualaikum",
-      "selamat pagi",
-      "selamat siang",
-      "selamat sore",
-      "selamat malam"
-    ];
-
-    if (greetings.includes(userText)) {
-      return new Response(
-        JSON.stringify({
-          reply:
-`Selamat datang di *Alkes PKY* 🙏
-
-Silakan pilih layanan:
-
-1️⃣ Asisten AI (tanya produk & rekomendasi)
-2️⃣ Chat Admin (langsung ke tim kami)
-
-Ketik *1* atau *2* ya.`
-        }),
-        { headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    // ==================================================
-    // 🔹 PILIH ADMIN
-    // ==================================================
-    if (userText === "2") {
-      return new Response(
-        JSON.stringify({
-          reply:
-"Baik 🙏 Saya hubungkan ke admin Alkes PKY sekarang ya.\nSilakan tunggu sebentar."
-        }),
-        { headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    // ==================================================
-    // 🔹 JIKA BUKAN 1 → ARAHKAN ULANG
-    // ==================================================
-    if (userText === "menu") {
-      return new Response(
-        JSON.stringify({
-          reply:
-`Silakan pilih layanan:
-
-1️⃣ Asisten AI  
-2️⃣ Chat Admin  
-
-Ketik *1* atau *2* ya 🙏`
-        }),
-        { headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    // ==================================================
-    // 🔹 ESCALATION KEYWORDS
+    // 🔹 ESCALATION KE ADMIN
     // ==================================================
     const adminKeywords = [
       "admin",
@@ -78,47 +18,50 @@ Ketik *1* atau *2* ya 🙏`
       "cod",
       "transfer",
       "order",
-      "pesan sekarang"
+      "pesan sekarang",
+      "pembayaran"
     ];
 
     if (adminKeywords.some(k => userText.includes(k))) {
       return new Response(
         JSON.stringify({
           reply:
-"Baik 🙏 Untuk proses tersebut, saya hubungkan ke admin Alkes PKY ya.\nSilakan tunggu sebentar."
+"Baik kak 🙏 Untuk proses tersebut saya bantu hubungkan ke admin Alkes PKY ya.\nSilakan tunggu sebentar."
         }),
         { headers: { "Content-Type": "application/json" } }
       );
     }
 
     // ==================================================
-    // 🔹 SYSTEM PROMPT (AI SALES MODE)
+    // 🔹 SYSTEM PROMPT (AI SHOPEE STYLE)
     // ==================================================
     const enhancedSystemPrompt = {
       role: "system",
       content: `
-Anda adalah ZedAI, asisten penjualan resmi Alkes PKY di Palangka Raya.
+Anda adalah ZedAI, asisten penjualan Alkes PKY di Palangka Raya.
 
-Fokus membantu pelanggan memilih alat kesehatan seperti:
-- Tensimeter
-- Stetoskop
-- Strip gula darah
-- Alat cek kolesterol
-- Termometer
-- Nebulizer
-- Kursi roda
-- dan kebutuhan klinik lainnya
+Gaya komunikasi:
+- Natural seperti AI marketplace (Shopee/Tokopedia)
+- Ramah, ringan, tidak kaku
+- Gunakan kata "kak" agar terasa natural
+- Jawaban singkat dan langsung ke poin
 
-Aturan:
-- Jangan mengarang harga atau stok
-- Jika tidak yakin, arahkan ke admin
+Tugas Anda:
+- Menjawab pertanyaan tentang produk alat kesehatan
+- Menjelaskan ketersediaan produk
+- Memberikan rekomendasi sesuai kebutuhan
+- Mengajak closing secara halus
+
+Aturan penting:
+- Jangan mengarang harga atau stok jika tidak ada data
+- Jika pelanggan ingin negosiasi atau transaksi, arahkan ke admin
 - Fokus melayani area Palangka Raya
-- Gunakan gaya bahasa singkat seperti chat WhatsApp
-- Berikan rekomendasi dalam bentuk poin bernomor jika perlu
-- Tutup dengan pertanyaan ringan untuk membantu closing
+- Jangan membahas topik di luar alat kesehatan
 
-Contoh penutup:
-"Mau saya bantu pilihkan sesuai kebutuhan?"
+Contoh gaya jawaban:
+"Ada kak 😊"
+"Masih tersedia kak 🙏"
+"Mau untuk penggunaan pribadi atau klinik?"
 `
     };
 
@@ -136,7 +79,7 @@ Contoh penutup:
         body: JSON.stringify({
           model: "llama-3.1-8b-instant",
           messages: [enhancedSystemPrompt, ...messages],
-          temperature: 0.3,
+          temperature: 0.4,
           stream: false
         })
       }
