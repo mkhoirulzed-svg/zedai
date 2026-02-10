@@ -58,7 +58,7 @@ export async function onRequestPost({ request, env }) {
     // ==================================================
     // 🔹 FETCH DATA PRODUK DARI SPREADSHEET
     // ==================================================
-    const productRes = await fetch("PASTE_URL_WEBAPP_KAMU_DI_SINI");
+    const productRes = await fetch("https://script.google.com/macros/s/AKfycbxsxv2jLktEIgPWx-xWl0vPrRy7gux5961LmKvwJNeXu6FtqqgmuAoSAoyw8qSaUdYM/exec");
     const products = await productRes.json();
 
     // ==================================================
