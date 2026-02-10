@@ -7,7 +7,7 @@ export async function onRequestPost({ request, env }) {
       messages[messages.length - 1]?.content?.toLowerCase().trim() || "";
 
     // ==================================================
-    // 🔹 ESCALATION KEYWORDS (LANGSUNG ADMIN)
+    // 🔹 KEYWORD ADMIN (NEGOSIASI / TRANSAKSI)
     // ==================================================
     const adminKeywords = [
       "admin",
@@ -19,103 +19,85 @@ export async function onRequestPost({ request, env }) {
       "transfer",
       "order",
       "pesan sekarang",
-      "pembayaran",
-      "kirim sekarang"
+      "pembayaran"
     ];
 
     if (adminKeywords.some(k => userText.includes(k))) {
       return new Response(
         JSON.stringify({
           reply:
-            "Baik kak 🙏 Untuk proses tersebut saya bantu hubungkan langsung ke admin Alkes PKY ya.\nSilakan tunggu sebentar."
+            "Baik kak 🙏 Untuk proses tersebut saya bantu hubungkan langsung ke admin Alkes PKY ya."
         }),
         { headers: { "Content-Type": "application/json" } }
       );
     }
 
     // ==================================================
-    // 🔹 SYSTEM PROMPT (AI SALES NATURAL MODE)
+    // 🔹 KHUSUS PERTANYAAN STOK / KETERSEDIAAN
     // ==================================================
-    const enhancedSystemPrompt = {
-      role: "system",
-      content: `
-Anda adalah ZedAI, asisten penjualan Alkes PKY di Palangka Raya.
+    const stockKeywords = [
+      "stok",
+      "ready",
+      "tersedia",
+      "masih ada",
+      "ada barang",
+      "kosong",
+      "habis"
+    ];
 
-Gaya komunikasi:
-- Natural seperti AI marketplace (Shopee/Tokopedia)
-- Ramah dan ringan
-- Gunakan kata "kak"
-- Jawaban singkat dan langsung ke poin
-
-Tugas Anda:
-- Menjawab pertanyaan tentang produk alat kesehatan
-- Menjelaskan ketersediaan produk
-- Memberikan rekomendasi sesuai kebutuhan
-- Mengajak closing secara halus
-
-Aturan penting:
-- Jangan mengarang harga atau stok
-- Jika tidak yakin, jangan berspekulasi
-- Jika pelanggan ingin negosiasi, transaksi, atau data detail, arahkan ke admin
-- Fokus melayani area Palangka Raya
-- Jangan membahas topik di luar alat kesehatan
-
-Contoh gaya:
-"Ada kak 😊"
-"Masih tersedia kak 🙏"
-"Mau untuk penggunaan pribadi atau klinik?"
-      `
-    };
-
-    // ==================================================
-    // 🔹 KIRIM KE GROQ
-    // ==================================================
-    const groqRes = await fetch(
-      "https://api.groq.com/openai/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${env.GROQ_API_KEY}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: "llama-3.1-8b-instant",
-          messages: [enhancedSystemPrompt, ...messages],
-          temperature: 0.4,
-          stream: false
-        })
-      }
-    );
-
-    const groqData = await groqRes.json();
-    let reply = groqData?.choices?.[0]?.message?.content ?? "";
-
-    // ==================================================
-    // 🔹 AUTO ESCALATION JIKA AI RAGU / JAWABAN TIDAK VALID
-    // ==================================================
-    if (
-      !reply ||
-      reply.length < 5 ||
-      reply.toLowerCase().includes("tidak tahu") ||
-      reply.toLowerCase().includes("kurang informasi") ||
-      reply.toLowerCase().includes("tidak tersedia informasi") ||
-      reply.toLowerCase().includes("saya tidak memiliki data")
-    ) {
+    if (stockKeywords.some(k => userText.includes(k))) {
       return new Response(
         JSON.stringify({
           reply:
-            "Untuk memastikan jawaban yang paling akurat dan nyaman untuk kakak 🙏\nSaya bantu hubungkan langsung ke admin Alkes PKY ya."
+            "Untuk memastikan ketersediaan stok yang paling akurat 🙏\nSaya bantu cekkan langsung ke admin Alkes PKY ya kak."
         }),
         { headers: { "Content-Type": "application/json" } }
       );
     }
 
     // ==================================================
-    // 🔹 RETURN NORMAL AI RESPONSE
+    // 🔹 FETCH DATA PRODUK DARI SPREADSHEET
     // ==================================================
-    return new Response(JSON.stringify({ reply }), {
-      headers: { "Content-Type": "application/json" }
-    });
+    const productRes = await fetch("PASTE_URL_WEBAPP_KAMU_DI_SINI");
+    const products = await productRes.json();
+
+    // ==================================================
+    // 🔹 FILTER PRODUK BERDASARKAN NAMA / MERK
+    // ==================================================
+    const matchedProducts = products.filter(p =>
+      p.nama?.toLowerCase().includes(userText) ||
+      p.NAMA?.toLowerCase().includes(userText) ||
+      p.merk?.toLowerCase().includes(userText)
+    );
+
+    // ==================================================
+    // 🔹 JIKA PRODUK DITEMUKAN → TAMPILKAN HARGA SAJA
+    // ==================================================
+    if (matchedProducts.length > 0) {
+      let reply = "Berikut informasi harganya kak 😊\n\n";
+
+      matchedProducts.slice(0, 5).forEach((p, index) => {
+        reply += `${index + 1}️⃣ ${p.nama}\n`;
+        reply += `💰 Rp ${Number(p["HAGA JUAL TOTAL"]).toLocaleString("id-ID")}\n\n`;
+      });
+
+      reply += "Jika ingin memastikan stok atau melakukan pemesanan, saya bisa hubungkan ke admin ya kak 🙏";
+
+      return new Response(JSON.stringify({ reply }), {
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    // ==================================================
+    // 🔹 JIKA TIDAK DITEMUKAN → ADMIN
+    // ==================================================
+    return new Response(
+      JSON.stringify({
+        reply:
+          "Untuk memastikan produk yang kakak maksud 🙏\nSaya bantu hubungkan langsung ke admin Alkes PKY ya."
+      }),
+      { headers: { "Content-Type": "application/json" } }
+    );
 
   } catch (err) {
     return new Response(
