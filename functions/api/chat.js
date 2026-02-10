@@ -7,6 +7,21 @@ export async function onRequestPost({ request, env }) {
       messages[messages.length - 1]?.content?.toLowerCase().trim() || "";
 
     // ==================================================
+    // 🔹 SAPAAN
+    // ==================================================
+    const greetings = ["halo", "hai", "hi", "hello", "assalamualaikum"];
+
+    if (greetings.includes(userText)) {
+      return new Response(
+        JSON.stringify({
+          reply:
+            "Halo kak 😊 Selamat datang di Alkes PKY.\nSilakan tanya produk yang kakak cari ya 🙏"
+        }),
+        { headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // ==================================================
     // 🔹 ESCALATION NEGOSIASI / TRANSAKSI
     // ==================================================
     const adminKeywords = [
@@ -33,7 +48,7 @@ export async function onRequestPost({ request, env }) {
     }
 
     // ==================================================
-    // 🔹 FETCH DATA DARI SPREADSHEET
+    // 🔹 FETCH DATA PRODUK
     // ==================================================
     const productRes = await fetch("https://script.google.com/macros/s/AKfycbxsxv2jLktEIgPWx-xWl0vPrRy7gux5961LmKvwJNeXu6FtqqgmuAoSAoyw8qSaUdYM/exec");
 
@@ -48,7 +63,22 @@ export async function onRequestPost({ request, env }) {
     }
 
     // ==================================================
-    // 🔹 FILTER PRODUK (AMAN & FLEXIBLE)
+    // 🔹 DETEKSI APAKAH USER SEDANG MENCARI PRODUK
+    // ==================================================
+    const isProductQuery = products.some(p => {
+      const nama = (p.nama || "").toLowerCase();
+      const nama2 = (p.NAMA || "").toLowerCase();
+      const merk = (p.merk || "").toLowerCase();
+
+      return (
+        userText.includes(nama) ||
+        userText.includes(nama2) ||
+        userText.includes(merk)
+      );
+    });
+
+    // ==================================================
+    // 🔹 FILTER PRODUK
     // ==================================================
     const matchedProducts = products.filter(p => {
       const nama = (p.nama || "").toLowerCase();
@@ -66,7 +96,7 @@ export async function onRequestPost({ request, env }) {
     // 🔹 JIKA PRODUK DITEMUKAN
     // ==================================================
     if (matchedProducts.length > 0) {
-      let reply = "Siap kak 😊 Berikut detail produknya:\n\n";
+      let reply = "Ada kak 😊 Berikut detail produknya:\n\n";
 
       matchedProducts.slice(0, 5).forEach((p, index) => {
         const harga = Number(p["HAGA JUAL TOTAL"] || 0);
@@ -82,7 +112,7 @@ export async function onRequestPost({ request, env }) {
         }
       });
 
-      reply += "Mau dibantu proses atau ada yang ingin ditanyakan lagi kak? 😊";
+      reply += "Mau dibantu proses kak? 😊";
 
       return new Response(JSON.stringify({ reply }), {
         headers: { "Content-Type": "application/json" }
@@ -90,12 +120,25 @@ export async function onRequestPost({ request, env }) {
     }
 
     // ==================================================
-    // 🔹 JIKA TIDAK DITEMUKAN
+    // 🔹 JIKA TIDAK ADA MATCH TAPI JUGA BUKAN PRODUK
+    // ==================================================
+    if (!isProductQuery) {
+      return new Response(
+        JSON.stringify({
+          reply:
+            "Siap kak 😊 Silakan sebutkan nama produk alat kesehatan yang kakak cari ya 🙏"
+        }),
+        { headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // ==================================================
+    // 🔹 JIKA PRODUK DICARI TAPI TIDAK ADA DI DATA
     // ==================================================
     return new Response(
       JSON.stringify({
         reply:
-          "Untuk memastikan produk yang kakak maksud 🙏 Saya bantu hubungkan langsung ke admin Alkes PKY ya 😊"
+          "Untuk memastikan produk tersebut 🙏 Saya bantu cekkan langsung ke admin Alkes PKY ya kak 😊"
       }),
       { headers: { "Content-Type": "application/json" } }
     );
@@ -107,4 +150,3 @@ export async function onRequestPost({ request, env }) {
     );
   }
 }
-
