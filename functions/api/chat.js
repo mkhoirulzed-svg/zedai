@@ -7,64 +7,6 @@ export async function onRequestPost({ request, env }) {
       messages[messages.length - 1]?.content?.toLowerCase().trim() || "";
 
     // ==================================================
-    // 🔹 MENU AWAL
-    // ==================================================
-    const greetings = [
-      "", "halo", "hai", "hello", "hi",
-      "assalamualaikum",
-      "selamat pagi",
-      "selamat siang",
-      "selamat sore",
-      "selamat malam"
-    ];
-
-    if (greetings.includes(userText)) {
-      return new Response(
-        JSON.stringify({
-          reply:
-`Selamat datang di *Alkes PKY* 🙏
-
-Silakan pilih layanan:
-
-1️⃣ Admin AI (cek harga & stok produk)
-2️⃣ Chat Admin (langsung dengan tim kami)
-
-Ketik *1* atau *2* ya kak 😊`
-        }),
-        { headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    // ==================================================
-    // 🔹 PILIH CHAT ADMIN
-    // ==================================================
-    if (userText === "2") {
-      return new Response(
-        JSON.stringify({
-          reply:
-            "Baik kak 🙏 Saya hubungkan langsung ke admin Alkes PKY ya. Silakan tunggu sebentar 😊"
-        }),
-        { headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    // ==================================================
-    // 🔹 JIKA BELUM PILIH 1
-    // ==================================================
-    if (userText !== "1" && messages.length === 1) {
-      return new Response(
-        JSON.stringify({
-          reply:
-`Silakan pilih layanan terlebih dahulu ya kak 😊
-
-1️⃣ Admin AI  
-2️⃣ Chat Admin`
-        }),
-        { headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    // ==================================================
     // 🔹 ESCALATION NEGOSIASI / TRANSAKSI
     // ==================================================
     const adminKeywords = [
@@ -84,7 +26,7 @@ Ketik *1* atau *2* ya kak 😊`
       return new Response(
         JSON.stringify({
           reply:
-            "Untuk proses tersebut saya bantu hubungkan langsung ke admin ya kak 🙏"
+            "Baik kak 🙏 Untuk proses tersebut saya bantu hubungkan langsung ke admin Alkes PKY ya 😊"
         }),
         { headers: { "Content-Type": "application/json" } }
       );
@@ -106,7 +48,7 @@ Ketik *1* atau *2* ya kak 😊`
     }
 
     // ==================================================
-    // 🔹 FILTER PRODUK (AMAN)
+    // 🔹 FILTER PRODUK (AMAN & FLEXIBLE)
     // ==================================================
     const matchedProducts = products.filter(p => {
       const nama = (p.nama || "").toLowerCase();
@@ -124,7 +66,7 @@ Ketik *1* atau *2* ya kak 😊`
     // 🔹 JIKA PRODUK DITEMUKAN
     // ==================================================
     if (matchedProducts.length > 0) {
-      let reply = "";
+      let reply = "Siap kak 😊 Berikut detail produknya:\n\n";
 
       matchedProducts.slice(0, 5).forEach((p, index) => {
         const harga = Number(p["HAGA JUAL TOTAL"] || 0);
@@ -140,7 +82,7 @@ Ketik *1* atau *2* ya kak 😊`
         }
       });
 
-      reply += "Mau ambil yang mana kak? 😊";
+      reply += "Mau dibantu proses atau ada yang ingin ditanyakan lagi kak? 😊";
 
       return new Response(JSON.stringify({ reply }), {
         headers: { "Content-Type": "application/json" }
@@ -165,3 +107,4 @@ Ketik *1* atau *2* ya kak 😊`
     );
   }
 }
+
