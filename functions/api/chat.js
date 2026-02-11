@@ -43,6 +43,44 @@ export async function onRequestPost({ request, env }) {
     }
 
     // ==================================================
+    // 🔹 NORMALISASI & SINONIM
+    // ==================================================
+    const synonymMap = {
+      "tensi": "termometer",
+      "alat tensi": "termometer",
+      "thermogun": "termometer tembak",
+      "gun": "tembak",
+      "cek gula": "gula darah",
+      "strip gula": "gula darah",
+      "lancet": "lancets",
+      "swab alkohol": "alcohol swab",
+      "sarung tangan size m": "sarung tangan m"
+    };
+
+    let normalizedText = userText;
+
+    Object.keys(synonymMap).forEach(key => {
+      if (normalizedText.includes(key)) {
+        normalizedText = normalizedText.replaceAll(key, synonymMap[key]);
+      }
+    });
+
+    // ==================================================
+    // 🔹 STOPWORDS
+    // ==================================================
+    const stopwords = [
+      "ada","nggak","tidak","apakah","yang",
+      "kah","dong","nih","gak","ya","kak",
+      "produk","barang","berapa","harga",
+      "aku","saya","mau","ingin","beli",
+      "dong","min","bos","ready"
+    ];
+
+    const userWords = normalizedText
+      .split(/\s+/)
+      .filter(word => word.length > 2 && !stopwords.includes(word));
+
+    // ==================================================
     // 🔹 FETCH SPREADSHEET
     // ==================================================
     const productRes = await fetch("https://script.google.com/macros/s/AKfycbxsxv2jLktEIgPWx-xWl0vPrRy7gux5961LmKvwJNeXu6FtqqgmuAoSAoyw8qSaUdYM/exec");
@@ -57,37 +95,22 @@ export async function onRequestPost({ request, env }) {
     }
 
     // ==================================================
-    // 🔹 STOPWORDS
-    // ==================================================
-    const stopwords = [
-      "ada","nggak","tidak","apakah","yang",
-      "kah","dong","nih","gak","ya","kak",
-      "produk","barang","berapa","harga",
-      "aku","saya","mau","ingin","beli",
-      "dong","min","bos","ready"
-    ];
-
-    const userWords = userText
-      .split(/\s+/)
-      .filter(word => word.length > 2 && !stopwords.includes(word));
-
-    // ==================================================
-    // 🔹 MATCH PRODUK (SCORING SYSTEM)
+    // 🔹 MATCH PRODUK (SCORING FLEXIBLE)
     // ==================================================
     const matchedProducts = products
       .map(p => {
-        const nama = (p.nama || "").toLowerCase();
-        const nama2 = (p.NAMA || "").toLowerCase();
-        const merk = (p.merk || "").toLowerCase();
+        const fullText = (
+          (p.nama || "") +
+          " " +
+          (p.NAMA || "") +
+          " " +
+          (p.merk || "")
+        ).toLowerCase();
 
         let score = 0;
 
         userWords.forEach(word => {
-          if (
-            nama.includes(word) ||
-            nama2.includes(word) ||
-            merk.includes(word)
-          ) {
+          if (fullText.includes(word)) {
             score++;
           }
         });
@@ -98,12 +121,13 @@ export async function onRequestPost({ request, env }) {
       .sort((a, b) => b.score - a.score);
 
     // ==================================================
-    // 🔹 DETEKSI APAKAH INI PRODUCT QUERY
+    // 🔹 DETEKSI PRODUCT QUERY
     // ==================================================
     const productTriggers = [
       "ada","cari","punya","jual","tersedia",
       "termometer","tensimeter","omron",
-      "stetoskop","strip","nebulizer"
+      "stetoskop","strip","nebulizer",
+      "gula","lancet","swab","sarung tangan"
     ];
 
     const isProductQuery =
@@ -116,11 +140,14 @@ export async function onRequestPost({ request, env }) {
       let reply = "Ada kak 😊 Berikut detail produknya:\n\n";
 
       matchedProducts.slice(0, 5).forEach((p, index) => {
-        const harga = Number(p["HAGA JUAL TOTAL"] || 0);
+        const harga = Number(p["HARGA JUAL TOTAL"] || 0);
         const stok = Number(p.stok || 0);
 
         reply += `${index + 1}️⃣ *${p.nama || p.NAMA}*\n`;
-        reply += `💰 Rp ${harga.toLocaleString("id-ID")}\n`;
+
+        if (harga > 0) {
+          reply += `💰 Rp ${harga.toLocaleString("id-ID")}\n`;
+        }
 
         if (stok > 0) {
           reply += `📦 Stok tersedia: ${stok} pcs\n\n`;
@@ -158,7 +185,7 @@ export async function onRequestPost({ request, env }) {
 Anda adalah asisten resmi toko Alkes PKY.
 Jawab natural, ramah, dan profesional.
 Jangan pernah menyebut harga atau stok jika tidak berasal dari spreadsheet.
-Jika pertanyaan di luar produk, jawab singkat dan arahkan kembali ke produk.
+Jika pertanyaan di luar produk, arahkan kembali ke produk dengan sopan.
 `
     };
 
