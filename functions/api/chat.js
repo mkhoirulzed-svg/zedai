@@ -13,7 +13,8 @@ export async function onRequestPost({ request, env }) {
     // ==================================================
     const adminKeywords = [
       "admin","nego","grosir","cod","transfer",
-      "order","pesan sekarang","proses","lanjut","jadi"
+      "order","pesan sekarang","proses","lanjut",
+      "jadi","pembayaran"
     ];
 
     if (adminKeywords.some(k => userText.includes(k))) {
@@ -27,7 +28,7 @@ export async function onRequestPost({ request, env }) {
     }
 
     // ==================================================
-    // 🔹 SAPAAN SAJA
+    // 🔹 SAPAAN
     // ==================================================
     const greetings = ["halo","hai","hi","hello","assalamualaikum"];
 
@@ -61,40 +62,52 @@ export async function onRequestPost({ request, env }) {
     const stopwords = [
       "ada","nggak","tidak","apakah","yang",
       "kah","dong","nih","gak","ya","kak",
-      "produk","barang","berapa","harga"
+      "produk","barang","berapa","harga",
+      "aku","saya","mau","ingin","beli",
+      "dong","min","bos","ready"
     ];
 
     const userWords = userText
       .split(/\s+/)
-      .filter(word => !stopwords.includes(word));
+      .filter(word => word.length > 2 && !stopwords.includes(word));
 
     // ==================================================
-    // 🔹 MATCH PRODUK (AND LOGIC)
+    // 🔹 MATCH PRODUK (SCORING SYSTEM)
     // ==================================================
-    const matchedProducts = products.filter(p => {
-      const nama = (p.nama || "").toLowerCase();
-      const nama2 = (p.NAMA || "").toLowerCase();
-      const merk = (p.merk || "").toLowerCase();
+    const matchedProducts = products
+      .map(p => {
+        const nama = (p.nama || "").toLowerCase();
+        const nama2 = (p.NAMA || "").toLowerCase();
+        const merk = (p.merk || "").toLowerCase();
 
-      return userWords.length > 0 && userWords.every(word =>
-        nama.includes(word) ||
-        nama2.includes(word) ||
-        merk.includes(word)
-      );
-    });
+        let score = 0;
+
+        userWords.forEach(word => {
+          if (
+            nama.includes(word) ||
+            nama2.includes(word) ||
+            merk.includes(word)
+          ) {
+            score++;
+          }
+        });
+
+        return { ...p, score };
+      })
+      .filter(p => p.score > 0)
+      .sort((a, b) => b.score - a.score);
 
     // ==================================================
     // 🔹 DETEKSI APAKAH INI PRODUCT QUERY
     // ==================================================
-    const productQueryTriggers = [
+    const productTriggers = [
       "ada","cari","punya","jual","tersedia",
       "termometer","tensimeter","omron",
       "stetoskop","strip","nebulizer"
     ];
 
     const isProductQuery =
-      productQueryTriggers.some(k => userText.includes(k)) ||
-      userWords.length > 0;
+      productTriggers.some(k => userText.includes(k));
 
     // ==================================================
     // 🔹 JIKA PRODUK DITEMUKAN
@@ -116,7 +129,7 @@ export async function onRequestPost({ request, env }) {
         }
       });
 
-      reply += "Mau dibantu proses kak? 😊";
+      reply += "Jika ingin diproses atau tanya detail, silakan bilang ya kak 😊";
 
       return new Response(JSON.stringify({ reply }), {
         headers: { "Content-Type": "application/json" }
@@ -126,7 +139,7 @@ export async function onRequestPost({ request, env }) {
     // ==================================================
     // 🔹 JIKA PRODUCT QUERY TAPI TIDAK DITEMUKAN
     // ==================================================
-    if (isProductQuery) {
+    if (isProductQuery && matchedProducts.length === 0) {
       return new Response(
         JSON.stringify({
           reply:
@@ -137,14 +150,15 @@ export async function onRequestPost({ request, env }) {
     }
 
     // ==================================================
-    // 🔹 PERTANYAAN UMUM (BARU PAKAI AI)
+    // 🔹 PERTANYAAN UMUM (AI)
     // ==================================================
     const systemPrompt = {
       role: "system",
       content: `
-Anda adalah asisten Alkes PKY.
-Jawab natural dan ramah.
-Jangan menyebut harga atau stok.
+Anda adalah asisten resmi toko Alkes PKY.
+Jawab natural, ramah, dan profesional.
+Jangan pernah menyebut harga atau stok jika tidak berasal dari spreadsheet.
+Jika pertanyaan di luar produk, jawab singkat dan arahkan kembali ke produk.
 `
     };
 
@@ -153,13 +167,13 @@ Jangan menyebut harga atau stok.
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${env.GROQ_API_KEY}`,
+          Authorization: \`Bearer \${env.GROQ_API_KEY}\`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
           model: "llama-3.1-8b-instant",
           messages: [systemPrompt, ...messages],
-          temperature: 0.4
+          temperature: 0.3
         })
       }
     );
@@ -167,7 +181,7 @@ Jangan menyebut harga atau stok.
     const groqData = await groqRes.json();
     const aiReply =
       groqData?.choices?.[0]?.message?.content ||
-      "Silakan sebutkan produk yang kakak cari ya 😊";
+      "Silakan sebutkan produk alat kesehatan yang kakak cari ya 😊";
 
     return new Response(JSON.stringify({ reply: aiReply }), {
       headers: { "Content-Type": "application/json" }
@@ -180,3 +194,4 @@ Jangan menyebut harga atau stok.
     );
   }
 }
+
