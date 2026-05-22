@@ -9,215 +9,130 @@ export async function onRequestPost({ request, env }) {
     const userText = userMessage.toLowerCase();
 
     // ==================================================
-    // 🔹 NEGOSIASI / TRANSAKSI → ADMIN
+    // 🔹 SAPAAN NATURAL
     // ==================================================
-    const adminKeywords = [
-      "admin","nego","grosir","cod","transfer",
-      "order","pesan sekarang","proses","lanjut",
-      "jadi","pembayaran"
+    const greetings = [
+      "halo",
+      "hai",
+      "hi",
+      "hello",
+      "assalamualaikum",
+      "p"
     ];
-
-    if (adminKeywords.some(k => userText.includes(k))) {
-      return new Response(
-        JSON.stringify({
-          reply:
-            "Baik kak 🙏 Untuk proses tersebut saya hubungkan langsung ke admin Alkes PKY ya 😊"
-        }),
-        { headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    // ==================================================
-    // 🔹 SAPAAN
-    // ==================================================
-    const greetings = ["halo","hai","hi","hello","assalamualaikum"];
 
     if (greetings.includes(userText)) {
+
+      const greetingReplies = [
+        "Halo 👋",
+        "Hai.",
+        "Halo, ada apa?",
+        "Hai hehe",
+        "Waalaikumsalam 😊",
+        "Halo. Lagi sibuk apa?"
+      ];
+
+      const randomReply =
+        greetingReplies[
+          Math.floor(Math.random() * greetingReplies.length)
+        ];
+
       return new Response(
         JSON.stringify({
-          reply:
-            "Halo kak 😊 Silakan sebutkan produk alat kesehatan yang kakak cari ya 🙏"
+          reply: randomReply
         }),
-        { headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    // ==================================================
-    // 🔹 NORMALISASI & SINONIM
-    // ==================================================
-    const synonymMap = {
-      "tensi": "termometer",
-      "alat tensi": "termometer",
-      "thermogun": "termometer tembak",
-      "gun": "tembak",
-      "cek gula": "gula darah",
-      "strip gula": "gula darah",
-      "lancet": "lancets",
-      "swab alkohol": "alcohol swab",
-      "sarung tangan size m": "sarung tangan m"
-    };
-
-    let normalizedText = userText;
-
-    Object.keys(synonymMap).forEach(key => {
-      if (normalizedText.includes(key)) {
-        normalizedText = normalizedText.replaceAll(key, synonymMap[key]);
-      }
-    });
-
-    // ==================================================
-    // 🔹 STOPWORDS
-    // ==================================================
-    const stopwords = [
-      "ada","nggak","tidak","apakah","yang",
-      "kah","dong","nih","gak","ya","kak",
-      "produk","barang","berapa","harga",
-      "aku","saya","mau","ingin","beli",
-      "dong","min","bos","ready"
-    ];
-
-    const userWords = normalizedText
-      .split(/\s+/)
-      .filter(word => word.length > 2 && !stopwords.includes(word));
-
-    // ==================================================
-    // 🔹 FETCH SPREADSHEET
-    // ==================================================
-    const productRes = await fetch("https://script.google.com/macros/s/AKfycbxsxv2jLktEIgPWx-xWl0vPrRy7gux5961LmKvwJNeXu6FtqqgmuAoSAoyw8qSaUdYM/exec");
-
-    if (!productRes.ok) {
-      throw new Error("Gagal fetch spreadsheet");
-    }
-
-    let products = await productRes.json();
-    if (!Array.isArray(products)) {
-      products = products.data || [];
-    }
-
-    // ==================================================
-    // 🔹 MATCH PRODUK (SCORING FLEXIBLE)
-    // ==================================================
-    const matchedProducts = products
-      .map(p => {
-        const fullText = (
-          (p.nama || "") +
-          " " +
-          (p.NAMA || "") +
-          " " +
-          (p.merk || "")
-        ).toLowerCase();
-
-        let score = 0;
-
-        userWords.forEach(word => {
-          if (fullText.includes(word)) {
-            score++;
+        {
+          headers: {
+            "Content-Type": "application/json"
           }
-        });
-
-        return { ...p, score };
-      })
-      .filter(p => p.score > 0)
-      .sort((a, b) => b.score - a.score);
-
-    // ==================================================
-    // 🔹 DETEKSI PRODUCT QUERY
-    // ==================================================
-    const productTriggers = [
-      "ada","cari","punya","jual","tersedia",
-      "termometer","tensimeter","omron",
-      "stetoskop","strip","nebulizer",
-      "gula","lancet","swab","sarung tangan"
-    ];
-
-    const isProductQuery =
-      productTriggers.some(k => userText.includes(k));
-
-    // ==================================================
-    // 🔹 JIKA PRODUK DITEMUKAN
-    // ==================================================
-    if (matchedProducts.length > 0) {
-      let reply = "Ada kak 😊 Berikut detail produknya:\n\n";
-
-      matchedProducts.slice(0, 5).forEach((p, index) => {
-        const harga = Number(p["HARGA JUAL TOTAL"] || 0);
-        const stok = Number(p.stok || 0);
-
-        reply += `${index + 1}️⃣ *${p.nama || p.NAMA}*\n`;
-
-        if (harga > 0) {
-          reply += `💰 Rp ${harga.toLocaleString("id-ID")}\n`;
         }
-
-        if (stok > 0) {
-          reply += `📦 Stok tersedia: ${stok} pcs\n\n`;
-        } else {
-          reply += `📦 Stok saat ini kosong\n\n`;
-        }
-      });
-
-      reply += "Jika ingin diproses atau tanya detail, silakan bilang ya kak 😊";
-
-      return new Response(JSON.stringify({ reply }), {
-        headers: { "Content-Type": "application/json" }
-      });
-    }
-
-    // ==================================================
-    // 🔹 JIKA PRODUCT QUERY TAPI TIDAK DITEMUKAN
-    // ==================================================
-    if (isProductQuery && matchedProducts.length === 0) {
-      return new Response(
-        JSON.stringify({
-          reply:
-            "Untuk memastikan produk tersebut 🙏 Saya bantu cekkan langsung ke admin Alkes PKY ya kak 😊"
-        }),
-        { headers: { "Content-Type": "application/json" } }
       );
     }
 
     // ==================================================
-    // 🔹 PERTANYAAN UMUM (AI)
+    // 🔹 SYSTEM PROMPT
     // ==================================================
     const systemPrompt = {
       role: "system",
       content: `
-Anda adalah asisten resmi toko Alkes PKY.
-Jawab natural, ramah, dan profesional.
-Jangan pernah menyebut harga atau stok jika tidak berasal dari spreadsheet.
-Jika pertanyaan di luar produk, arahkan kembali ke produk dengan sopan.
+Kamu adalah AI profil pribadi Muhammad Khairul Zed.
+
+Kepribadian:
+- Natural seperti chat WhatsApp.
+- Santai, ramah, dan hangat.
+- Tidak terlalu formal.
+- Tidak terdengar seperti customer service.
+- Kadang bisa bercanda ringan.
+- Jawaban boleh pendek atau panjang sesuai konteks.
+- Jangan terlalu sering memakai emoji.
+- Gunakan gaya ngobrol manusia biasa.
+
+Tentang Muhammad Khairul Zed:
+- Seorang perawat IGD.
+- Membuat ZedKalkulator.
+- Tertarik dengan dunia kesehatan, alat kesehatan, teknologi, dan digitalisasi.
+- Sering membahas edukasi kesehatan dan perhitungan klinis.
+- Ramah dan suka membantu.
+
+Aturan:
+- Jangan mengaku manusia asli.
+- Jangan mengarang data pribadi.
+- Kalau tidak tahu, jawab dengan natural bahwa informasinya tidak tersedia.
+- Jangan terlalu sering mengulang nama Muhammad Khairul Zed.
+- Hindari jawaban terlalu robotik.
+- Fokus jadi teman ngobrol yang terasa personal.
 `
     };
 
+    // ==================================================
+    // 🔹 GROQ AI
+    // ==================================================
     const groqRes = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
       {
         method: "POST",
         headers: {
-          Authorization: \`Bearer \${env.GROQ_API_KEY}\`,
+          Authorization: `Bearer ${env.GROQ_API_KEY}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
           model: "llama-3.1-8b-instant",
           messages: [systemPrompt, ...messages],
-          temperature: 0.3
+          temperature: 0.8,
+          max_tokens: 500
         })
       }
     );
 
     const groqData = await groqRes.json();
+
     const aiReply =
       groqData?.choices?.[0]?.message?.content ||
-      "Silakan sebutkan produk alat kesehatan yang kakak cari ya 😊";
+      "Hmm, coba ulangi lagi deh.";
 
-    return new Response(JSON.stringify({ reply: aiReply }), {
-      headers: { "Content-Type": "application/json" }
-    });
+    return new Response(
+      JSON.stringify({
+        reply: aiReply
+      }),
+      {
+        headers: {
+          "Content-Type": "application/json"
+        }
+      }
+    );
 
   } catch (err) {
+
     return new Response(
-      JSON.stringify({ error: String(err) }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      JSON.stringify({
+        error: String(err)
+      }),
+      {
+        status: 500,
+        headers: {
+          "Content-Type": "application/json"
+        }
+      }
     );
+
   }
 }
