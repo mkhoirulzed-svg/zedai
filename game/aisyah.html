@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Game Membaca Aisyah</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  min-height:100vh;
+  font-family:Arial,sans-serif;
+  background:linear-gradient(135deg,#ccfbf1,#fef3c7);
+  display:flex;
+  justify-content:center;
+  padding:14px;
+  color:#0f172a;
+}
+.app{
+  width:100%;
+  max-width:760px;
+  background:white;
+  border-radius:26px;
+  padding:18px;
+  box-shadow:0 20px 45px rgba(0,0,0,.15);
+}
+h1{
+  margin:0;
+  text-align:center;
+  color:#0f766e;
+  font-size:30px;
+}
+.sub{
+  text-align:center;
+  color:#64748b;
+  margin:8px 0 18px;
+}
+.card{
+  background:#fefce8;
+  border:3px dashed #facc15;
+  border-radius:24px;
+  padding:20px;
+  text-align:center;
+}
+.emoji{
+  font-size:80px;
+  animation:lompat 1.5s infinite;
+}
+@keyframes lompat{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-10px)}
+}
+.bacaan{
+  display:flex;
+  justify-content:center;
+  flex-wrap:wrap;
+  gap:10px;
+  margin:20px 0;
+}
+.suku{
+  font-size:44px;
+  font-weight:900;
+  background:white;
+  border-radius:18px;
+  padding:14px 18px;
+  border:2px solid #fde68a;
+  position:relative;
+  overflow:hidden;
+}
+.suku.aktif{
+  color:#0f766e;
+  transform:scale(1.12);
+  border-color:#14b8a6;
+}
+.suku.aktif:after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(90deg,transparent,rgba(20,184,166,.3),transparent);
+  animation:karaoke 1s infinite;
+}
+@keyframes karaoke{
+  from{transform:translateX(-100%)}
+  to{transform:translateX(100%)}
+}
+.suku.benar{
+  background:#dcfce7;
+  color:#166534;
+}
+button,select,input{
+  width:100%;
+  border:none;
+  border-radius:16px;
+  padding:14px;
+  font-size:16px;
+  font-weight:bold;
+  margin-top:10px;
+}
+button{
+  background:#0f766e;
+  color:white;
+}
+button.alt{
+  background:#e2e8f0;
+  color:#0f172a;
+}
+button.red{
+  background:#fee2e2;
+  color:#991b1b;
+}
+select,input{
+  border:1px solid #cbd5e1;
+  background:white;
+}
+.grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.hasil{
+  margin-top:15px;
+  padding:14px;
+  border-radius:18px;
+  background:#f1f5f9;
+  font-size:20px;
+  font-weight:bold;
+  text-align:center;
+}
+.good{background:#dcfce7;color:#166534}
+.bad{background:#fee2e2;color:#991b1b}
+.score{
+  margin-top:14px;
+  text-align:center;
+  font-size:24px;
+}
+.list{
+  margin-top:16px;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
+  gap:10px;
+}
+.item{
+  background:#f8fafc;
+  border:1px solid #cbd5e1;
+  border-radius:16px;
+  padding:12px;
+  text-align:center;
+  font-weight:bold;
+  cursor:pointer;
+}
+.item.active{
+  background:#ccfbf1;
+  border-color:#0f766e;
+}
+.note{
+  margin-top:14px;
+  font-size:13px;
+  color:#64748b;
+  line-height:1.5;
+}
+@media(max-width:600px){
+  .grid{grid-template-columns:1fr}
+  .suku{font-size:36px}
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+  <h1>Game Membaca Aisyah</h1>
+  <div class="sub">Baca suku kata yang menyala seperti karaoke 🎤</div>
+
+  <select id="level" onchange="gantiLevel()">
+    <option value="tkA">Level TK A - Suku Kata</option>
+    <option value="tkB">Level TK B - Kata Mudah</option>
+    <option value="kalimat">Level Kalimat Pendek</option>
+  </select>
+
+  <div class="card">
+    <div class="emoji" id="emoji">🐰</div>
+    <div class="bacaan" id="bacaan"></div>
+
+    <div class="grid">
+      <button onclick="mulaiKaraoke()">▶️ Mulai Karaoke</button>
+      <button onclick="dengarSuara()">🎤 Aisyah Bicara</button>
+      <button class="alt" onclick="berikutnya()">➡️ Berikutnya</button>
+      <button class="red" onclick="resetSkor()">🔄 Reset Skor</button>
+    </div>
+
+    <div id="hasil" class="hasil">Tekan mulai ya 😊</div>
+    <div class="score">
+      ⭐ Skor: <span id="skor">0</span><br>
+      <span id="bintang">☆☆☆☆☆</span>
+    </div>
+  </div>
+
+  <input id="custom" placeholder="Tambah bacaan sendiri, contoh: na si ma kan ru mah">
+  <button onclick="tambahBacaan()">Tambah Bacaan</button>
+
+  <div class="list" id="list"></div>
+
+  <div class="note">
+    Catatan: validasi suara memakai fitur bawaan browser. Paling cocok dibuka di
+    <b>Google Chrome Android</b>. Pastikan izin mikrofon aktif.
+  </div>
+</div>
+
+<script>
+const data = {
+  tkA:[
+    ["na","🐟"],["ni","🐥"],["nu","🐮"],["ne","🐱"],["no","🐰"],
+    ["ma","👩"],["mi","🍜"],["mu","🐵"],["me","🍈"],["mo","🚗"],
+    ["ba","🐑"],["bi","🐝"],["bu","📚"],["be","🦆"],["bo","⚽"]
+  ],
+  tkB:[
+    ["na si","🍚"],["ma kan","🍽️"],["ru mah","🏠"],["bu ku","📚"],
+    ["bo la","⚽"],["sa pi","🐄"],["ku da","🐴"],["i bu","👩"],
+    ["a yah","👨"],["a i syah","🌸"],["mi num","🥛"],["ti dur","🛏️"]
+  ],
+  kalimat:[
+    ["i bu ma sak na si","🍳"],
+    ["a yah di ru mah","🏡"],
+    ["a i syah ba ca bu ku","📖"],
+    ["ku da ma kan ru mput","🐴"],
+    ["bo la a da di ru mah","⚽"],
+    ["sa pi mi num a ir","🐄"]
+  ]
+};
+
+let level = "tkA";
+let index = 0;
+let skor = Number(localStorage.getItem("skorAisyah") || 0);
+let timer = null;
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+function normal(teks){
+  return teks.toLowerCase()
+    .replace(/[^a-z\s]/g,"")
+    .replace(/\s+/g," ")
+    .trim();
+}
+
+function rapat(teks){
+  return normal(teks).replace(/\s/g,"");
+}
+
+function updateSkor(){
+  document.getElementById("skor").innerText = skor;
+  let isi = Math.min(5, skor);
+  document.getElementById("bintang").innerText = "★".repeat(isi) + "☆".repeat(5-isi);
+  localStorage.setItem("skorAisyah", skor);
+}
+
+function tampil(){
+  clearInterval(timer);
+  let item = data[level][index];
+  let teks = item[0];
+  let emoji = item[1];
+
+  document.getElementById("emoji").innerText = emoji;
+  document.getElementById("bacaan").innerHTML = teks.split(" ").map((s,i)=>{
+    return `<div class="suku ${i===0?'aktif':''}">${s}</div>`;
+  }).join("");
+
+  document.getElementById("hasil").className = "hasil";
+  document.getElementById("hasil").innerText = "Bacaan: " + teks;
+
+  renderList();
+}
+
+function mulaiKaraoke(){
+  clearInterval(timer);
+  let suku = document.querySelectorAll(".suku");
+  let i = 0;
+
+  suku.forEach(x=>{
+    x.classList.remove("aktif");
+    x.classList.remove("benar");
+  });
+
+  suku[0].classList.add("aktif");
+
+  timer = setInterval(()=>{
+    suku[i].classList.remove("aktif");
+    suku[i].classList.add("benar");
+    i++;
+
+    if(i >= suku.length){
+      clearInterval(timer);
+      return;
+    }
+
+    suku[i].classList.add("aktif");
+  },1000);
+}
+
+function dengarSuara(){
+  if(!SpeechRecognition){
+    document.getElementById("hasil").className = "hasil bad";
+    document.getElementById("hasil").innerText = "Browser belum mendukung mikrofon.";
+    return;
+  }
+
+  let rec = new SpeechRecognition();
+  rec.lang = "id-ID";
+  rec.interimResults = false;
+  rec.maxAlternatives = 3;
+
+  document.getElementById("hasil").className = "hasil";
+  document.getElementById("hasil").innerText = "Mendengarkan... 🎤";
+
+  rec.onresult = function(e){
+    let suara = e.results[0][0].transcript;
+    let target = data[level][index][0];
+
+    let benar = rapat(suara) === rapat(target) ||
+                rapat(suara).includes(rapat(target)) ||
+                rapat(target).includes(rapat(suara));
+
+    if(benar){
+      skor++;
+      updateSkor();
+      document.getElementById("hasil").className = "hasil good";
+      document.getElementById("hasil").innerText = "Benar! Aisyah hebat 🎉";
+      semuaBenar();
+      bunyi(true);
+      setTimeout(berikutnya,1300);
+    }else{
+      document.getElementById("hasil").className = "hasil bad";
+      document.getElementById("hasil").innerText = `Terdengar: "${suara}". Coba baca: "${target}"`;
+      bunyi(false);
+      mulaiKaraoke();
+    }
+  };
+
+  rec.onerror = function(){
+    document.getElementById("hasil").className = "hasil bad";
+    document.getElementById("hasil").innerText = "Suara belum terdengar. Coba lagi ya.";
+  };
+
+  rec.start();
+}
+
+function semuaBenar(){
+  document.querySelectorAll(".suku").forEach(x=>{
+    x.classList.remove("aktif");
+    x.classList.add("benar");
+  });
+}
+
+function berikutnya(){
+  index++;
+  if(index >= data[level].length) index = 0;
+  tampil();
+}
+
+function gantiLevel(){
+  level = document.getElementById("level").value;
+  index = 0;
+  tampil();
+}
+
+function resetSkor(){
+  skor = 0;
+  updateSkor();
+}
+
+function tambahBacaan(){
+  let input = document.getElementById("custom");
+  let teks = normal(input.value);
+
+  if(!teks){
+    document.getElementById("hasil").className = "hasil bad";
+    document.getElementById("hasil").innerText = "Isi dulu bacaannya ya.";
+    return;
+  }
+
+  data[level].push([teks,"🌟"]);
+  index = data[level].length - 1;
+  input.value = "";
+  tampil();
+}
+
+function renderList(){
+  let box = document.getElementById("list");
+  box.innerHTML = data[level].map((x,i)=>{
+    return `<div class="item ${i===index?'active':''}" onclick="pilih(${i})">${x[0]}</div>`;
+  }).join("");
+}
+
+function pilih(i){
+  index = i;
+  tampil();
+}
+
+function bunyi(ok){
+  try{
+    let ctx = new (window.AudioContext || window.webkitAudioContext)();
+    let osc = ctx.createOscillator();
+    let gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    gain.gain.value = 0.08;
+    osc.frequency.value = ok ? 800 : 220;
+    osc.start();
+    setTimeout(()=>{
+      osc.frequency.value = ok ? 1000 : 180;
+    },100);
+    setTimeout(()=>{
+      osc.stop();
+      ctx.close();
+    },250);
+  }catch(e){}
+}
+
+updateSkor();
+tampil();
+</script>
+</body>
+</html>
