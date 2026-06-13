@@ -123,7 +123,16 @@ function computeShift(tanggal, shift, schedOvr, zoneOvr) {
   if (pjNurse) usedIds.add(pjNurse.id);
 
   // 3. Remaining
-  const remaining = active.filter(n => !usedIds.has(n.id));
+// Jika Yuli Winarni dinas dan PJ sudah ada,
+// Yuli tidak dimasukkan ke zona merah/kuning.
+const remaining = active.filter(n => {
+  if (usedIds.has(n.id)) return false;
+
+  // id 2 = Yuli Winarni / PPJA
+  if (n.id === 2 && pjNurse) return false;
+
+  return true;
+});
   const zo = zoneOvr || {};
 
   const forcedMerah  = remaining.filter(n => zo[n.id] === "merah");
