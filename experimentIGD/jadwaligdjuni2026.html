@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Jadwal IGD — RSUD dr. Doris Sylvanus</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0F172A;font-family:'Segoe UI',Arial,sans-serif;color:#F1F5F9}
+  button{cursor:pointer;font-family:inherit}
+  ::-webkit-scrollbar{width:6px}
+  ::-webkit-scrollbar-track{background:#0F172A}
+  ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useMemo } = React;
+
+const NURSES_BASE = [
+  { id:1,  nama:"TINA LUSIA, S.Kep.,Ns",          zona:"karu",   schedule:["L","CUTI","P","P","P","L","P","P","P","P","P","P","P","L","P","L","P","P","P","P","L","P","P","P","P","P","P","L","P","P"] },
+  { id:2,  nama:"YULI WINARNI, A.Md.Kep",          zona:"ppja",   schedule:["P","P","P","L","P","L","P","P","P","P","P","P","L","L","P","P","P","P","P","P","L","P","P","P","L","P","P","L","P","P"] },
+  { id:3,  nama:"MELIANTIE, S DEWI, A.Md.Kep",     zona:"triase", schedule:["L","P","P","P","P","P","L","P","P","P","L","L","P","L","P","P","P","P","P","P","P","L","P","P","P","P","P","P","L","P"] },
+  { id:4,  nama:"SUGIYATMI, S.Kep.,Ns",            zona:"triase", schedule:["S","L","P","M","L","P","P","L","P","M","L","P","M","L","S","M","L","P","S","M","L","L","P","S","M","L","P","S","M","L"] },
+  { id:5,  nama:"NETARIANIE, Amd.Kep",             zona:"triase", schedule:["L","P","M","L","S","S","M","L","L","P","S","M","L","P","P","M","L","S","M","L","P","S","M","L","P","S","M","L","CUTI","CUTI"] },
+  { id:6,  nama:"AGUSTINA HS, Amd.Kep",            zona:"triase", schedule:["M","L","S","M","L","S","S","L","L","P","S","M","L","L","P","M","L","P","M","L","P","M","L","P","L","P","L","P","L","P"] },
+  { id:7,  nama:"CYNTIA CICI, Amd.Kep",            zona:"triase", schedule:["L","S","S","P","P","L","L","M","L","S","M","L","P","S","M","L","P","M","L","P","S","M","L","L","S","M","L","P","S","M"] },
+  { id:8,  nama:"RESA O. P, Amd.,Kep",             zona:"triase", schedule:["P","M","L","P","P","M","L","P","M","L","P","S","M","L","L","S","S","L","P","S","M","L","P","L","M","L","S","M","L","S"] },
+  { id:9,  nama:"ATI SIDABUTAR, S.Kep.,Ns",        zona:"merah",  schedule:["P","S","S","S","L","L","P","M","L","P","P","P","P","P","P","L","P","P","P","P","L","L","P","P","P","S","L","P","P","L"] },
+  { id:10, nama:"ALIDA M.S, S.Kep.,Ns",            zona:"merah",  schedule:["L","P","P","P","M","L","L","P","S","M","L","P","M","L","P","P","S","S","L","L","S","M","L","P","P","M","L","P","S","S"] },
+  { id:11, nama:"NIDYA MANTOVANI, S.Kep.",          zona:"merah",  schedule:["L","L","M","L","P","M","M","L","P","P","P","L","L","M","M","L","P","S","S","S","M","L","S","M","L","M","L","P","L","P"] },
+  { id:12, nama:"KRISTIAN L, S.Kep.,Ns",           zona:"merah",  schedule:["L","S","M","M","L","L","CUTI","CUTI","CUTI","CUTI","CUTI","CUTI","CUTI","CUTI","CUTI","CUTI","CUTI","CUTI","CUTI","P","S","M","M","L","P","S","S","M","L","L"] },
+  { id:13, nama:"CHICHI, S.Kep.,Ns",               zona:"merah",  schedule:["M","L","P","L","S","M","L","L","P","S","M","L","P","S","M","L","L","P","M","L","P","S","M","L","P","S","M","L","P","P"] },
+  { id:14, nama:"YULIANUS PENYANG, A.Md.Kep",      zona:"merah",  schedule:["S","M","L","L","P","S","M","L","L","P","S","M","L","P","S","M","L","P","S","M","L","P","S","M","L","P","S","M","L","P"] },
+  { id:15, nama:"M. KHAIRUL ZED, S.Kep.,Ns",       zona:"merah",  schedule:["L","S","S","M","L","P","S","M","L","L","S","S","S","M","L","M","L","S","M","M","L","L","P","P","S","M","L","L","L","P"] },
+  { id:16, nama:"SEPTOADI, A.Md.Kep",              zona:"merah",  schedule:["P","L","S","S","M","L","S","S","M","L","M","M","L","L","L","S","S","M","L","S","L","L","M","L","P","P","M","L","P","P"] },
+  { id:17, nama:"EBIET P.U., S.Kep.,Ns",           zona:"merah",  schedule:["M","L","L","P","S","M","L","M","L","L","S","M","M","L","L","S","M","L","P","S","M","L","P","M","L","P","S","S","S","S"] },
+  { id:18, nama:"M. SAUKY, S.Kep.,Ns",             zona:"merah",  schedule:["P","M","L","L","P","S","M","L","S","S","M","M","L","L","P","P","S","M","L","S","M","L","L","S","S","S","L","M","M","L"] },
+  { id:19, nama:"M. RIZAL, S.Kep.,Ns",             zona:"merah",  schedule:["L","L","S","S","M","L","P","M","M","L","L","S","M","L","P","P","S","M","M","L","L","L","S","L","L","P","S","S","S","M"] },
+  { id:20, nama:"AFRIANS WIBOWO, S.Kep.,Ns",       zona:"merah",  schedule:["S","M","L","S","S","M","L","L","M","L","P","S","S","S","M","L","P","P","M","M","L","L","S","M","L","L","P","P","S","S"] },
+  { id:21, nama:"GERRY S.Kep.,Ns",                 zona:"merah",  schedule:["M","L","L","M","L","P","S","S","M","M","L","L","P","S","M","L","P","S","S","M","L","P","S","S","M","L","L","M","L","L"] },
+  { id:22, nama:"HARY SUSANTO, S.Kep.,Ns",         zona:"merah",  schedule:["S","M","L","S","S","S","L","P","P","M","L","P","S","S","M","L","L","M","L","M","L","S","M","M","L","L","P","P","M","L"] },
+  { id:23, nama:"JUANDI, S.Kep.,Ns",               zona:"merah",  schedule:["S","S","M","L","L","S","M","L","L","S","S","M","L","L","P","S","M","L","L","P","S","M","L","P","P","M","L","L","P","M"] },
+  { id:24, nama:"MAULIDA NOVITA, S.Kep.Ns",        zona:"merah",  schedule:["M","L","L","P","M","L","P","S","S","S","M","L","L","P","S","S","M","L","L","P","S","M","L","P","P","M","L","P","L","S"] },
+  { id:25, nama:"NI WAYAN DESI, Amd.,Kep",         zona:"kuning", schedule:["P","P","M","L","L","P","S","S","L","L","P","S","L","P","P","P","M","L","L","L","P","P","P","P","P","P","P","L","P","P"] },
+  { id:26, nama:"TRISNA, A.Md.Kep",                zona:"kuning", schedule:["L","P","P","M","L","L","P","L","L","P","P","L","M","L","S","M","L","L","S","M","L","M","P","S","M","L","L","S","M","L"] },
+  { id:27, nama:"SRI YANI, A.Md.Kep",              zona:"kuning", schedule:["M","L","P","S","M","L","P","S","S","M","L","L","P","S","M","L","L","S","M","L","P","P","M","L","L","P","M","L","L","M"] },
+  { id:28, nama:"MART KRISTIANDY, S.Kep.,Ns",      zona:"kuning", schedule:["M","L","L","P","S","M","L","P","P","S","M","L","S","S","M","L","L","P","P","M","L","L","S","M","L","P","S","S","S","L"] },
+  { id:29, nama:"MUNASIH, STR.Kep NS",             zona:"kuning", schedule:["S","M","L","M","L","P","P","M","L","P","S","M","L","P","L","M","L","L","S","S","L","P","S","M","L","P","S","S","M","L"] },
+  { id:30, nama:"MALADESTY, Amd.,Kep",             zona:"kuning", schedule:["L","P","S","L","P","P","M","L","L","P","M","L","S","L","P","S","L","P","S","M","L","S","M","L","M","L","S","M","L","S"] },
+  { id:31, nama:"LINA KALEB G. Amd.,Kep",          zona:"kuning", schedule:["L","S","M","L","P","S","S","L","M","L","P","S","M","L","L","S","M","L","P","S","M","L","P","S","M","L","P","S","M","L"] },
+  { id:32, nama:"BOBBY A., A.Md.KEP",              zona:"kuning", schedule:["L","P","M","M","L","L","S","M","L","P","S","M","L","P","M","M","L","P","P","L","L","L","M","L","S","S","S","L","P","S"] },
+  { id:33, nama:"ADIEL SEBASTIAN L., S.Kep.,Ns",   zona:"kuning", schedule:["M","L","M","L","P","S","M","L","P","S","M","L","P","S","S","L","P","S","M","L","P","L","M","L","P","S","M","L","M","L"] },
+  { id:34, nama:"BOBBY S., S.Kep.,Ns",             zona:"kuning", schedule:["S","S","L","P","M","L","S","S","M","L","P","S","M","L","L","S","M","L","P","S","M","L","L","M","L","P","S","M","L","L"] },
+  { id:35, nama:"KARTIKA NOVITA, S.Kep.,Ns",       zona:"kuning", schedule:["P","M","L","S","L","M","L","M","L","M","L","L","L","P","M","L","P","S","M","L","S","M","L","P","S","M","L","P","S","S"] },
+  { id:36, nama:"WENIE, S.Kep.,Ns",                zona:"kuning", schedule:["P","P","P","P","L","P","P","P","P","P","L","P","P","L","P","P","P","L","P","P","P","P","L","P","P","P","L","P","P","P"] },
+  { id:37, nama:"DEWIN SAPLIANUS, STR.,Kep",       zona:"kuning", schedule:["L","L","S","M","L","S","M","L","P","S","M","L","P","S","M","L","CUTI","CUTI","CUTI","CUTI","CUTI","P","P","P","P","P","P","P","P","P"] },
+  { id:38, nama:"EKI ALPIANSYAH, S.KEP.NS",        zona:"kuning", schedule:["S","S","S","L","M","L","L","P","S","M","L","P","S","M","L","P","M","M","L","L","L","S","M","L","P","S","M","L","P","M"] },
+  { id:39, nama:"NINA IQMA MEILIKA, A.Md.Kep",     zona:"kuning", schedule:["P","L","S","M","L","S","S","M","L","L","S","M","L","P","S","M","L","P","M","L","S","S","M","L","L","S","S","M","L","L"] },
+  { id:40, nama:"ANGGELINA, STR.,Kep.,Na",         zona:"kuning", schedule:["L","P","P","P","S","L","P","S","S","S","L","L","P","P","P","S","S","L","P","P","P","P","L","P","P","P","P","P","S","S"] },
+];
+
+const PJ_PRIORITY     = [3,9,10,13,14,25,26,2];
+const TRIASE_PRIORITY = [3,4,5,6,7,8];
+const SHIFT_LABEL = {P:"Pagi",S:"Sore",M:"Malam"};
+const SHIFT_TIME  = {P:"07.00–14.00",S:"14.00–21.00",M:"21.00–07.00"};
+const SHIFT_COLOR = {P:"#F59E0B",S:"#3B82F6",M:"#818CF8"};
+
+function getRawShift(nurse, tanggal, schedOvr) {
+  if (schedOvr && schedOvr[nurse.id] !== undefined) return schedOvr[nurse.id];
+  return nurse.schedule[tanggal-1] || "L";
+}
+
+function getFormation(total) {
+  if (total >= 9) return {hasPJ:true,  merah:3, kuning:4};
+  if (total === 8) return {hasPJ:true,  merah:3, kuning:3};
+  if (total === 7) return {hasPJ:false, merah:3, kuning:3};
+  if (total === 6) return {hasPJ:false, merah:2, kuning:3};
+  if (total === 5) return {hasPJ:false, merah:2, kuning:2};
+  if (total === 4) return {hasPJ:false, merah:1, kuning:2};
+  if (total === 3) return {hasPJ:false, merah:1, kuning:1};
+  if (total === 2) return {hasPJ:false, merah:1, kuning:0};
+  return {hasPJ:false, merah:0, kuning:0};
+}
+
+function computeShift(tanggal, shift, schedOvr, zoneOvr) {
+  // Exclude KARU (id=1) from all assignments
+  const active = NURSES_BASE.filter(n =>
+    n.zona !== "karu" && getRawShift(n, tanggal, schedOvr) === shift
+  );
+  const total = active.length;
+  const formation = getFormation(total);
+
+  // On call = nurses with L today (excluding KARU), max 3
+  const onCall = NURSES_BASE.filter(n =>
+    n.zona !== "karu" && getRawShift(n, tanggal, schedOvr) === "L"
+  ).slice(0, 3);
+
+  // 1. Triase
+  const triasePool = active.filter(n => n.zona === "triase");
+  let triaseNurse = null;
+  for (const tid of TRIASE_PRIORITY) {
+    const f = triasePool.find(n => n.id === tid);
+    if (f) { triaseNurse = f; break; }
+  }
+  if (!triaseNurse && triasePool.length > 0) triaseNurse = triasePool[0];
+
+  const usedIds = new Set();
+  if (triaseNurse) usedIds.add(triaseNurse.id);
+
+  // 2. PJ
+  let pjNurse = null;
+  if (formation.hasPJ) {
+    for (const pid of PJ_PRIORITY) {
+      const f = active.find(n => n.id === pid && !usedIds.has(n.id));
+      if (f) { pjNurse = f; break; }
+    }
+  }
+  if (pjNurse) usedIds.add(pjNurse.id);
+
+  // 3. Remaining
+  const remaining = active.filter(n => !usedIds.has(n.id));
+  const zo = zoneOvr || {};
+
+  const forcedMerah  = remaining.filter(n => zo[n.id] === "merah");
+  const forcedKuning = remaining.filter(n => zo[n.id] === "kuning");
+  const auto         = remaining.filter(n => !zo[n.id]);
+
+  const merahArr  = [...forcedMerah];
+  const kuningArr = [...forcedKuning];
+
+  const autoKuning = auto.filter(n => n.zona === "kuning" || n.zona === "ppja");
+  const autoMerah  = auto.filter(n => n.zona !== "kuning" && n.zona !== "ppja");
+
+  for (const n of autoKuning) {
+    if (kuningArr.length < formation.kuning) kuningArr.push(n);
+    else merahArr.push(n);
+  }
+  for (const n of autoMerah) {
+    if (merahArr.length < formation.merah) merahArr.push(n);
+    else if (kuningArr.length < formation.kuning) kuningArr.push({...n, borrowedFrom:"Zona Merah"});
+    else merahArr.push(n);
+  }
+
+  return {pj:pjNurse, triase:triaseNurse, merah:merahArr, kuning:kuningArr, onCall, total, formation, active};
+}
+
+// ===== EDIT SCHEDULE MODAL =====
+function EditScheduleModal({tanggal, schedOvr, onSave, onClose}) {
+  const [local, setLocal] = useState(() => {
+    const obj = {};
+    NURSES_BASE.forEach(n => { obj[n.id] = getRawShift(n, tanggal, schedOvr); });
+    return obj;
+  });
+  const opts = ["P","S","M","L","CUTI"];
+  const optColor = {P:"#F59E0B",S:"#3B82F6",M:"#818CF8",L:"#475569",CUTI:"#9333EA"};
+  const groups = [
+    {zona:"ppja",   label:"PPJA"},
+    {zona:"triase", label:"Triase (3–8)"},
+    {zona:"merah",  label:"Zona Merah (9–24)"},
+    {zona:"kuning", label:"Zona Kuning (25–40)"},
+  ];
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{background:"#1E293B",borderRadius:16,width:"100%",maxWidth:520,maxHeight:"90vh",overflow:"hidden",display:"flex",flexDirection:"column"}}>
+        <div style={{padding:"16px 20px",borderBottom:"1px solid #334155",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <div style={{color:"#F1F5F9",fontWeight:700,fontSize:16}}>✏️ Edit Jadwal</div>
+            <div style={{color:"#64748B",fontSize:12}}>Tanggal {tanggal} Juni 2026 — berlaku semua shift</div>
+          </div>
+          <button onClick={onClose} style={{background:"#334155",border:"none",color:"#94A3B8",borderRadius:8,padding:"6px 12px",fontSize:13}}>✕ Tutup</button>
+        </div>
+        <div style={{overflowY:"auto",flex:1,padding:"10px 20px"}}>
+          {groups.map(({zona,label}) => {
+            const nurses = NURSES_BASE.filter(n => n.zona === zona);
+            if (!nurses.length) return null;
+            return (
+              <div key={zona} style={{marginBottom:14}}>
+                <div style={{fontSize:10,color:"#64748B",fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",marginBottom:6,paddingTop:6}}>{label}</div>
+                {nurses.map(n => {
+                  const cur = local[n.id];
+                  return (
+                    <div key={n.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:"1px solid #0F172A"}}>
+                      <div style={{background:"#334155",color:"#94A3B8",borderRadius:5,width:26,height:26,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:11,flexShrink:0}}>{n.id}</div>
+                      <div style={{flex:1,color:"#CBD5E1",fontSize:12}}>{n.nama}</div>
+                      <div style={{display:"flex",gap:3}}>
+                        {opts.map(s => (
+                          <button key={s} onClick={() => setLocal(p => ({...p,[n.id]:s}))}
+                            style={{border:"none",borderRadius:5,padding:"4px 7px",fontSize:11,fontWeight:700,
+                              background:cur===s?optColor[s]:"#0F172A",color:cur===s?"#fff":"#64748B"}}>
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+        <div style={{padding:"12px 20px",borderTop:"1px solid #334155",display:"flex",gap:10}}>
+          <button onClick={onClose} style={{flex:1,background:"#334155",border:"none",color:"#94A3B8",borderRadius:10,padding:"12px 0",fontWeight:600,fontSize:14}}>Batal</button>
+          <button onClick={() => onSave(local)} style={{flex:2,background:"#2563EB",border:"none",color:"#fff",borderRadius:10,padding:"12px 0",fontWeight:700,fontSize:14}}>✓ Simpan</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===== EDIT ZONE MODAL =====
+function EditZoneModal({tanggal, shift, assignment, zoneOvr, onSave, onClose}) {
+  const allPool = [...assignment.merah, ...assignment.kuning];
+  const [local, setLocal] = useState(() => {
+    const obj = {};
+    allPool.forEach(n => {
+      obj[n.id] = zoneOvr[n.id] || (assignment.merah.find(m => m.id === n.id) ? "merah" : "kuning");
+    });
+    return obj;
+  });
+  const merahList  = allPool.filter(n => local[n.id] === "merah");
+  const kuningList = allPool.filter(n => local[n.id] === "kuning");
+  const toggle = (id) => setLocal(p => ({...p,[id]:p[id]==="merah"?"kuning":"merah"}));
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{background:"#1E293B",borderRadius:16,width:"100%",maxWidth:480,maxHeight:"90vh",overflow:"hidden",display:"flex",flexDirection:"column"}}>
+        <div style={{padding:"16px 20px",borderBottom:"1px solid #334155",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <div style={{color:"#F1F5F9",fontWeight:700,fontSize:16}}>🔀 Edit Zona</div>
+            <div style={{color:"#64748B",fontSize:12}}>Tgl {tanggal} · Shift {SHIFT_LABEL[shift]} · Tap nama untuk pindah zona</div>
+          </div>
+          <button onClick={onClose} style={{background:"#334155",border:"none",color:"#94A3B8",borderRadius:8,padding:"6px 12px",fontSize:13}}>✕</button>
+        </div>
+        <div style={{overflowY:"auto",flex:1,padding:"14px 20px"}}>
+          <div style={{display:"flex",gap:10,marginBottom:14}}>
+            <div style={{flex:1,background:"#1A0000",borderRadius:12,padding:"12px",border:"1px solid #EF4444"}}>
+              <div style={{color:"#EF4444",fontWeight:700,fontSize:12,marginBottom:8}}>🔴 Zona Merah<br/><span style={{fontWeight:400,fontSize:10}}>{merahList.length} orang</span></div>
+              {merahList.map(n => (
+                <div key={n.id} onClick={() => toggle(n.id)}
+                  style={{display:"flex",alignItems:"center",gap:6,padding:"6px 8px",borderRadius:8,marginBottom:4,background:"#2A0000",cursor:"pointer",border:"1px solid #3A0000"}}>
+                  <span style={{background:"#EF4444",color:"#fff",borderRadius:4,width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:10,flexShrink:0}}>{n.id}</span>
+                  <span style={{color:"#FCA5A5",fontSize:11,flex:1}}>{n.nama.split(",")[0]}</span>
+                  <span style={{color:"#EF4444",fontSize:11}}>→🟡</span>
+                </div>
+              ))}
+              {merahList.length === 0 && <div style={{color:"#475569",fontSize:11,fontStyle:"italic"}}>Kosong</div>}
+            </div>
+            <div style={{flex:1,background:"#1A1000",borderRadius:12,padding:"12px",border:"1px solid #D97706"}}>
+              <div style={{color:"#D97706",fontWeight:700,fontSize:12,marginBottom:8}}>🟡 Zona Kuning<br/><span style={{fontWeight:400,fontSize:10}}>{kuningList.length} orang</span></div>
+              {kuningList.map(n => (
+                <div key={n.id} onClick={() => toggle(n.id)}
+                  style={{display:"flex",alignItems:"center",gap:6,padding:"6px 8px",borderRadius:8,marginBottom:4,background:"#2A1A00",cursor:"pointer",border:"1px solid #3A2A00"}}>
+                  <span style={{background:"#D97706",color:"#fff",borderRadius:4,width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:10,flexShrink:0}}>{n.id}</span>
+                  <span style={{color:"#FCD34D",fontSize:11,flex:1}}>{n.nama.split(",")[0]}</span>
+                  <span style={{color:"#D97706",fontSize:11}}>→🔴</span>
+                </div>
+              ))}
+              {kuningList.length === 0 && <div style={{color:"#475569",fontSize:11,fontStyle:"italic"}}>Kosong</div>}
+            </div>
+          </div>
+          <div style={{background:"#0F172A",borderRadius:8,padding:"10px 12px"}}>
+            <div style={{color:"#475569",fontSize:11}}>💡 Tap nama perawat untuk pindah zona. PJ dan Triase tidak bisa dipindah di sini.</div>
+          </div>
+        </div>
+        <div style={{padding:"12px 20px",borderTop:"1px solid #334155",display:"flex",gap:10}}>
+          <button onClick={onClose} style={{flex:1,background:"#334155",border:"none",color:"#94A3B8",borderRadius:10,padding:"12px 0",fontWeight:600,fontSize:14}}>Batal</button>
+          <button onClick={() => onSave(local)} style={{flex:2,background:"#2563EB",border:"none",color:"#fff",borderRadius:10,padding:"12px 0",fontWeight:700,fontSize:14}}>✓ Simpan Zona</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===== ZONA CARD =====
+function ZonaCard({title, icon, color, bgColor, nurses, ideal}) {
+  const ok = nurses.length >= ideal;
+  return (
+    <div style={{background:"#1E293B",borderRadius:14,marginBottom:12,border:`1px solid ${ok?"#334155":"#7F1D1D"}`,overflow:"hidden"}}>
+      <div style={{background:bgColor,borderBottom:`2px solid ${color}`,padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span>{icon}</span>
+          <span style={{color,fontWeight:700,fontSize:14}}>{title}</span>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{color:ok?"#10B981":"#EF4444",fontSize:13,fontWeight:700}}>{nurses.length}/{ideal}</span>
+          {!ok && <span style={{background:"#7F1D1D",color:"#FCA5A5",borderRadius:5,padding:"2px 7px",fontSize:10,fontWeight:700}}>KURANG</span>}
+        </div>
+      </div>
+      <div style={{padding:"10px 16px"}}>
+        {nurses.length === 0
+          ? <div style={{color:"#475569",fontSize:12,fontStyle:"italic"}}>Tidak ada perawat</div>
+          : nurses.map((n,i) => (
+            <div key={n.id} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderBottom:i<nurses.length-1?"1px solid #0F172A":"none"}}>
+              <div style={{background:n.borrowedFrom?"#92400E":"#334155",color:"#F1F5F9",borderRadius:6,width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:12,flexShrink:0}}>{n.id}</div>
+              <div style={{flex:1}}>
+                <div style={{color:"#E2E8F0",fontSize:13,fontWeight:500}}>{n.nama}</div>
+                {n.borrowedFrom && <div style={{color:"#FBBF24",fontSize:11}}>↗ Pindahan dari {n.borrowedFrom}</div>}
+              </div>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  );
+}
+
+// ===== MAIN APP =====
+function App() {
+  const [tanggal, setTanggal] = useState(1);
+  const [shift, setShift]     = useState("P");
+  const [showEditSched, setShowEditSched] = useState(false);
+  const [showEditZone,  setShowEditZone]  = useState(false);
+  const [schedOverrides, setSchedOverrides] = useState({});
+  const [zoneOverrides,  setZoneOverrides]  = useState({});
+
+  const flatSchedOvr = schedOverrides[tanggal] || {};
+  const flatZoneOvr  = ((zoneOverrides[tanggal] || {})[shift]) || {};
+
+  const assignment = useMemo(
+    () => computeShift(tanggal, shift, flatSchedOvr, flatZoneOvr),
+    [tanggal, shift, JSON.stringify(flatSchedOvr), JSON.stringify(flatZoneOvr)]
+  );
+
+  function handleSaveSched(local) {
+    setSchedOverrides(p => ({...p,[tanggal]:local}));
+    setZoneOverrides(p => {const n={...p}; delete n[tanggal]; return n;});
+    setShowEditSched(false);
+  }
+  function handleSaveZone(local) {
+    setZoneOverrides(p => ({...p,[tanggal]:{...(p[tanggal]||{}),[shift]:local}}));
+    setShowEditZone(false);
+  }
+
+  const hasSchedOvr = !!schedOverrides[tanggal];
+  const hasZoneOvr  = Object.keys(flatZoneOvr).length > 0;
+  const days = Array.from({length:30},(_,i)=>i+1);
+  const {pj, triase, merah, kuning, onCall, total, formation} = assignment;
+
+  return (
+    <div style={{fontFamily:"'Segoe UI',Arial,sans-serif",background:"#0F172A",minHeight:"100vh",paddingBottom:48}}>
+
+      {showEditSched && (
+        <EditScheduleModal tanggal={tanggal} schedOvr={flatSchedOvr} onSave={handleSaveSched} onClose={() => setShowEditSched(false)} />
+      )}
+      {showEditZone && (
+        <EditZoneModal tanggal={tanggal} shift={shift} assignment={assignment} zoneOvr={flatZoneOvr} onSave={handleSaveZone} onClose={() => setShowEditZone(false)} />
+      )}
+
+      {/* Header */}
+      <div style={{background:"linear-gradient(135deg,#1E3A5F,#0F172A)",padding:"22px 20px 18px",borderBottom:"1px solid #1E293B"}}>
+        <div style={{maxWidth:680,margin:"0 auto",display:"flex",alignItems:"center",gap:12}}>
+          <div style={{background:"#EF4444",borderRadius:8,padding:"6px 10px",fontSize:18}}>🏥</div>
+          <div>
+            <div style={{fontSize:10,color:"#64748B",letterSpacing:"0.08em",textTransform:"uppercase",fontWeight:600}}>RSUD dr. DORIS SYLVANUS</div>
+            <div style={{fontSize:17,fontWeight:800,color:"#F1F5F9"}}>IGD — Jadwal Shift Juni 2026</div>
+            <div style={{fontSize:11,color:"#475569",marginTop:2}}>Ka. Ruangan: TINA LUSIA, S.Kep.,Ns</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{maxWidth:680,margin:"0 auto",padding:"20px 16px 0"}}>
+
+        {/* Tanggal picker */}
+        <div style={{marginBottom:16}}>
+          <div style={{fontSize:10,color:"#64748B",fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",marginBottom:8}}>Tanggal</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+            {days.map(d => {
+              const hasS = !!schedOverrides[d];
+              const hasZ = !!(zoneOverrides[d] && Object.keys(zoneOverrides[d]).length);
+              return (
+                <button key={d} onClick={() => setTanggal(d)} style={{
+                  width:36,height:36,borderRadius:8,border:"none",fontSize:12,
+                  fontWeight:tanggal===d?700:500,position:"relative",
+                  background:tanggal===d?"#3B82F6":hasS||hasZ?"#1A2A1A":"#1E293B",
+                  color:tanggal===d?"#fff":hasS||hasZ?"#4ADE80":"#94A3B8",
+                  boxShadow:tanggal===d?"0 0 0 2px #60A5FA":"none",
+                }}>
+                  {d}
+                  {(hasS||hasZ) && <span style={{position:"absolute",top:2,right:2,width:5,height:5,background:"#4ADE80",borderRadius:"50%"}}/>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Shift tabs */}
+        <div style={{display:"flex",gap:8,marginBottom:12}}>
+          {Object.entries(SHIFT_LABEL).map(([k,label]) => (
+            <button key={k} onClick={() => setShift(k)} style={{
+              flex:1,padding:"10px 0",borderRadius:10,border:"none",
+              fontWeight:shift===k?700:500,fontSize:13,
+              background:shift===k?SHIFT_COLOR[k]:"#1E293B",
+              color:shift===k?"#fff":"#64748B",
+            }}>
+              {label}
+              <div style={{fontSize:10,opacity:0.8,marginTop:2}}>{SHIFT_TIME[k]}</div>
+            </button>
+          ))}
+        </div>
+
+        {/* Edit buttons */}
+        <div style={{display:"flex",gap:8,marginBottom:18}}>
+          <button onClick={() => setShowEditSched(true)} style={{
+            flex:1,padding:"11px 0",borderRadius:10,
+            border:`1px solid ${hasSchedOvr?"#4ADE80":"#334155"}`,
+            background:hasSchedOvr?"#1A3A1A":"#1E293B",
+            color:hasSchedOvr?"#4ADE80":"#94A3B8",fontSize:13,fontWeight:600,
+          }}>
+            ✏️ Edit Jadwal
+            {hasSchedOvr && <div style={{fontSize:10,opacity:0.8}}>Ada perubahan</div>}
+          </button>
+          <button onClick={() => setShowEditZone(true)} style={{
+            flex:1,padding:"11px 0",borderRadius:10,
+            border:`1px solid ${hasZoneOvr?"#FBBF24":"#334155"}`,
+            background:hasZoneOvr?"#1A1400":"#1E293B",
+            color:hasZoneOvr?"#FBBF24":"#94A3B8",fontSize:13,fontWeight:600,
+          }}>
+            🔀 Edit Zona
+            {hasZoneOvr && <div style={{fontSize:10,opacity:0.8}}>Ada perubahan</div>}
+          </button>
+        </div>
+
+        {/* Info bar */}
+        <div style={{background:"#1E293B",borderRadius:12,padding:"12px 16px",marginBottom:14}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+            <span style={{fontSize:19,fontWeight:800,color:"#F1F5F9"}}>{String(tanggal).padStart(2,"0")} Juni 2026</span>
+            <span style={{background:SHIFT_COLOR[shift],color:"#fff",borderRadius:7,padding:"4px 12px",fontSize:12,fontWeight:700}}>
+              Shift {SHIFT_LABEL[shift]} · {SHIFT_TIME[shift]}
+            </span>
+          </div>
+          <div style={{marginTop:8,display:"flex",gap:8,flexWrap:"wrap"}}>
+            <span style={{background:"#0F172A",color:"#64748B",borderRadius:6,padding:"3px 10px",fontSize:11,fontWeight:600}}>{total} orang aktif</span>
+            <span style={{background:"#0F172A",color:"#64748B",borderRadius:6,padding:"3px 10px",fontSize:11}}>
+              Formasi: T1 · {formation.hasPJ?"PJ1":"PJ—"} · M{formation.merah} · K{formation.kuning}
+            </span>
+          </div>
+        </div>
+
+        {/* PJ */}
+        <div style={{background:formation.hasPJ?"#1E3A5F":"#161625",border:`1px solid ${formation.hasPJ?"#2563EB":"#1E293B"}`,borderRadius:12,padding:"12px 16px",marginBottom:12}}>
+          <div style={{fontSize:10,color:formation.hasPJ?"#60A5FA":"#475569",fontWeight:700,letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:8}}>👤 Penanggung Jawab (PJ)</div>
+          {formation.hasPJ && pj ? (
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <div style={{background:"#2563EB",color:"#fff",borderRadius:8,width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:12,flexShrink:0}}>{pj.id}</div>
+              <div>
+                <div style={{color:"#F1F5F9",fontWeight:600,fontSize:14}}>{pj.nama}</div>
+                <div style={{color:"#60A5FA",fontSize:11}}>No. {pj.id} · Prioritas PJ</div>
+              </div>
+            </div>
+          ) : (
+            <div style={{color:"#475569",fontSize:12,fontStyle:"italic"}}>
+              {formation.hasPJ?"Tidak ada kandidat PJ":`Tidak ada PJ — formasi ${total} orang`}
+            </div>
+          )}
+        </div>
+
+        {/* Triase */}
+        <div style={{background:"#1E293B",borderRadius:12,marginBottom:12,overflow:"hidden",border:`1px solid ${triase?"#334155":"#7F1D1D"}`}}>
+          <div style={{background:"#001A0F",borderBottom:"2px solid #10B981",padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span>🟢</span>
+              <span style={{color:"#10B981",fontWeight:700,fontSize:14}}>Triase</span>
+            </div>
+            <span style={{color:triase?"#10B981":"#EF4444",fontSize:13,fontWeight:700}}>{triase?"1/1":"0/1"}</span>
+          </div>
+          <div style={{padding:"10px 16px"}}>
+            {triase
+              ? <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <div style={{background:"#334155",color:"#F1F5F9",borderRadius:6,width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:12}}>{triase.id}</div>
+                  <div style={{color:"#E2E8F0",fontSize:13,fontWeight:500}}>{triase.nama}</div>
+                </div>
+              : <div style={{color:"#EF4444",fontSize:12,fontStyle:"italic"}}>Tidak ada perawat triase</div>
+            }
+          </div>
+        </div>
+
+        <ZonaCard title="Zona Merah" icon="🔴" color="#EF4444" bgColor="#1A0000" nurses={merah} ideal={formation.merah} />
+        <ZonaCard title="Zona Kuning" icon="🟡" color="#D97706" bgColor="#1A1000" nurses={kuning} ideal={formation.kuning} />
+
+        {/* On Call */}
+        <div style={{background:"#1E293B",borderRadius:14,marginBottom:12,border:"1px solid #334155",overflow:"hidden"}}>
+          <div style={{background:"#0D1B2A",borderBottom:"2px solid #0EA5E9",padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span>📞</span>
+              <span style={{color:"#0EA5E9",fontWeight:700,fontSize:14}}>On Call</span>
+              <span style={{color:"#475569",fontSize:11,fontStyle:"italic"}}>— sedang libur, siap dipanggil</span>
+            </div>
+            <span style={{color:"#0EA5E9",fontSize:13,fontWeight:700}}>{onCall.length} orang</span>
+          </div>
+          <div style={{padding:"10px 16px"}}>
+            {onCall.length === 0
+              ? <div style={{color:"#475569",fontSize:12,fontStyle:"italic"}}>Tidak ada yang libur hari ini</div>
+              : onCall.map((n,i) => (
+                <div key={n.id} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderBottom:i<onCall.length-1?"1px solid #0F172A":"none"}}>
+                  <div style={{background:"#0C2A38",color:"#38BDF8",borderRadius:6,width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:12,flexShrink:0,border:"1px solid #0EA5E9"}}>{n.id}</div>
+                  <div style={{flex:1}}>
+                    <div style={{color:"#E2E8F0",fontSize:13,fontWeight:500}}>{n.nama}</div>
+                    <div style={{color:"#475569",fontSize:11}}>Libur · {n.zona === "triase" ? "Triase" : n.zona === "merah" ? "Zona Merah" : n.zona === "kuning" ? "Zona Kuning" : "PPJA"}</div>
+                  </div>
+                  <div style={{background:"#0C2A38",color:"#0EA5E9",borderRadius:6,padding:"3px 8px",fontSize:11,fontWeight:600,border:"1px solid #0EA5E9"}}>ON CALL</div>
+                </div>
+              ))
+            }
+          </div>
+        </div>
+
+        {/* Summary */}
+        <div style={{background:"#1E293B",borderRadius:12,padding:"14px 16px"}}>
+          <div style={{fontSize:10,color:"#64748B",fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",marginBottom:10}}>Ringkasan</div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {[
+              {label:"PJ",      count:formation.hasPJ&&pj?1:0, color:"#2563EB"},
+              {label:"Triase",  count:triase?1:0,               color:"#10B981"},
+              {label:"Merah",   count:merah.length,             color:"#EF4444"},
+              {label:"Kuning",  count:kuning.length,            color:"#D97706"},
+              {label:"On Call", count:onCall.length,            color:"#0EA5E9"},
+              {label:"Total",   count:total,                    color:"#94A3B8"},
+            ].map(item => (
+              <div key={item.label} style={{flex:1,minWidth:60,textAlign:"center",background:"#0F172A",borderRadius:8,padding:"10px 4px"}}>
+                <div style={{fontSize:18,fontWeight:800,color:item.color}}>{item.count}</div>
+                <div style={{fontSize:10,color:"#64748B",marginTop:2}}>{item.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Reset bar */}
+        {(hasSchedOvr || hasZoneOvr) && (
+          <div style={{marginTop:12,background:"#1A2A1A",border:"1px solid #4ADE80",borderRadius:10,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{color:"#4ADE80",fontSize:12,fontWeight:600}}>
+              ✓ Tgl {tanggal}: {[hasSchedOvr&&"jadwal",hasZoneOvr&&"zona"].filter(Boolean).join(" & ")} diubah
+            </div>
+            <button onClick={() => {
+              setSchedOverrides(p => {const n={...p}; delete n[tanggal]; return n;});
+              setZoneOverrides(p => {const n={...p}; delete n[tanggal]; return n;});
+            }} style={{background:"none",border:"1px solid #4ADE80",color:"#4ADE80",borderRadius:7,padding:"4px 10px",fontSize:11}}>
+              Reset Tgl {tanggal}
+            </button>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
