@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Jadwal Zona IGD</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- PDF reader -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+  <!-- OCR -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+  <link rel="stylesheet" href="zona-igd.css">
+</head>
+
+<body class="bg-slate-100 min-h-screen p-3 sm:p-6 text-slate-800">
+
+  <div class="max-w-6xl mx-auto space-y-4">
+
+    <header class="card p-4 sm:p-6">
+      <h1 class="text-2xl font-extrabold text-teal-700">Jadwal Zona IGD</h1>
+      <p class="text-sm text-slate-500">
+        Upload jadwal, susun otomatis per shift, lalu edit zona bila perlu.
+      </p>
+    </header>
+
+    <section class="card p-4 space-y-3">
+      <h2 class="font-bold">Upload Jadwal</h2>
+
+      <input 
+        type="file" 
+        id="fileInput" 
+        accept="application/pdf,image/*"
+        class="w-full bg-white"
+      >
+
+      <div class="flex flex-wrap gap-2">
+        <button onclick="processFile()" class="btn-primary">
+          Baca Jadwal Otomatis
+        </button>
+
+        <button onclick="openManualInput()" class="btn-dark">
+          Edit Jadwal Manual
+        </button>
+
+        <button onclick="autoBuildAll()" class="btn-blue">
+          Susun Semua Zona
+        </button>
+      </div>
+
+      <p id="status" class="text-sm text-slate-500">
+        Catatan: hasil OCR dari PDF scan bisa perlu koreksi manual.
+      </p>
+    </section>
+
+    <section id="manualPanel" class="card p-4 space-y-3 hidden">
+      <h2 class="font-bold">Edit Jadwal Manual</h2>
+
+      <p class="text-sm text-slate-500">
+        Format: <b>nomor | nama | tanggal | shift</b><br>
+        Shift: <b>P</b> pagi, <b>S</b> sore, <b>M</b> malam, <b>L</b> libur/lepas.
+      </p>
+
+      <textarea 
+        id="manualText" 
+        rows="10"
+        class="input w-full"
+        placeholder="9 | ATI SIDABUTAR | 2 | S"
+      ></textarea>
+
+      <div class="flex flex-wrap gap-2">
+        <button onclick="saveManualSchedule()" class="btn-primary">
+          Simpan Jadwal
+        </button>
+
+        <button onclick="closeManualInput()" class="btn-light">
+          Tutup
+        </button>
+      </div>
+    </section>
+
+    <section class="card p-4">
+      <div class="flex flex-col sm:flex-row sm:items-end gap-3">
+        <div>
+          <label class="label">Tanggal</label>
+          <select id="dateSelect" onchange="render()" class="input min-w-[130px]"></select>
+        </div>
+
+        <div>
+          <label class="label">Shift</label>
+          <select id="shiftSelect" onchange="render()" class="input min-w-[130px]">
+            <option value="P">Pagi</option>
+            <option value="S">Sore</option>
+            <option value="M">Malam</option>
+          </select>
+        </div>
+
+        <button onclick="editCurrentShift()" class="btn-warning">
+          Edit Jadwal Shift Ini
+        </button>
+
+        <button onclick="autoBuildCurrent()" class="btn-blue">
+          Susun Ulang Shift Ini
+        </button>
+      </div>
+    </section>
+
+    <section id="summary" class="card p-4 text-sm"></section>
+
+    <main class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+      <section class="card p-4 zoneBox">
+        <h3 class="zone-title text-purple-700">Triase</h3>
+        <div id="triase" class="space-y-2"></div>
+      </section>
+
+      <section class="card p-4 zoneBox pjBox">
+        <h3 class="zone-title text-blue-700">PJ / Penanggung Jawab</h3>
+        <div id="pj" class="space-y-2"></div>
+      </section>
+
+      <section class="card p-4 zoneBox">
+        <h3 class="zone-title text-red-700">Zona Merah</h3>
+        <div id="merah" class="space-y-2"></div>
+      </section>
+
+      <section class="card p-4 zoneBox">
+        <h3 class="zone-title text-yellow-700">Zona Kuning</h3>
+        <div id="kuning" class="space-y-2"></div>
+      </section>
+
+      <section class="card p-4 zoneBox lg:col-span-2">
+        <h3 class="zone-title text-slate-700">On Call</h3>
+        <p class="text-xs text-slate-500 mb-2">
+          Otomatis 3 orang dari yang libur atau lepas setelah jaga.
+        </p>
+        <div id="oncall" class="space-y-2"></div>
+      </section>
+
+    </main>
+
+    <section class="card p-4">
+      <h3 class="font-bold mb-2">Semua Perawat Shift Ini</h3>
+      <div id="allPeople" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-2"></div>
+    </section>
+
+  </div>
+
+  <script src="zona-igd.js"></script>
+</body>
+</html>
