@@ -87,21 +87,25 @@ function getFormation(total) {
   return {hasPJ:false, merah:0, kuning:0};
 }
 
-function computeShift(tanggal, shift, schedOvr, zoneOvr) {
-  // Exclude KARU (id=1) from all assignments
+// Default on-call: nurses on "L", exclude karu & ppja, sorted by ID descending (bottom priority first)
+function getDefaultOnCall(tanggal, shift, schedOvr, pjNurse) {
+  return NURSES_BASE
+    .filter(n => {
+      if (n.zona === "karu") return false;
+      if (n.zona === "ppja") return false;
+      if (pjNurse && n.id === pjNurse.id) return false;
+      return getRawShift(n, tanggal, schedOvr) === "L";
+    })
+    .sort((a, b) => b.id - a.id) // descending: bottom of list first
+    .slice(0, 3);
+}
+
+function computeShift(tanggal, shift, schedOvr, zoneOvr, onCallOvr) {
   const active = NURSES_BASE.filter(n =>
     n.zona !== "karu" && getRawShift(n, tanggal, schedOvr) === shift
   );
   const total = active.length;
   const formation = getFormation(total);
-
-  const onCall = NURSES_BASE.filter(n => {
-  if (n.zona === "karu") return false;
-  if (n.zona === "ppja") return false;
-  if (pjNurse && n.id === pjNurse.id) return false;
-
-  return getRawShift(n, tanggal, schedOvr) === "L";
-}).slice(0, 3);
 
   // 1. Triase
   const triasePool = active.filter(n => n.zona === "triase");
@@ -126,25 +130,19 @@ function computeShift(tanggal, shift, schedOvr, zoneOvr) {
   if (pjNurse) usedIds.add(pjNurse.id);
 
   // 3. Remaining
-// Jika Yuli Winarni dinas dan PJ sudah ada,
-// Yuli tidak dimasukkan ke zona merah/kuning.
-const remaining = active.filter(n => {
-  if (usedIds.has(n.id)) return false;
+  const remaining = active.filter(n => {
+    if (usedIds.has(n.id)) return false;
+    if (n.id === 2 && pjNurse) return false;
+    return true;
+  });
 
-  // id 2 = Yuli Winarni / PPJA
-  if (n.id === 2 && pjNurse) return false;
-
-  return true;
-});
   const zo = zoneOvr || {};
-
   const forcedMerah  = remaining.filter(n => zo[n.id] === "merah");
   const forcedKuning = remaining.filter(n => zo[n.id] === "kuning");
   const auto         = remaining.filter(n => !zo[n.id]);
 
   const merahArr  = [...forcedMerah];
   const kuningArr = [...forcedKuning];
-
   const autoKuning = auto.filter(n => n.zona === "kuning" || n.zona === "ppja");
   const autoMerah  = auto.filter(n => n.zona !== "kuning" && n.zona !== "ppja");
 
@@ -156,6 +154,17 @@ const remaining = active.filter(n => {
     if (merahArr.length < formation.merah) merahArr.push(n);
     else if (kuningArr.length < formation.kuning) kuningArr.push({...n, borrowedFrom:"Zona Merah"});
     else merahArr.push(n);
+  }
+
+  // 4. On Call — use override if set, otherwise default (bottom-priority first)
+  let onCall;
+  if (onCallOvr !== null && onCallOvr !== undefined) {
+    // Manual override: resolve IDs back to nurse objects
+    onCall = onCallOvr
+      .map(id => NURSES_BASE.find(n => n.id === id))
+      .filter(Boolean);
+  } else {
+    onCall = getDefaultOnCall(tanggal, shift, schedOvr, pjNurse);
   }
 
   return {pj:pjNurse, triase:triaseNurse, merah:merahArr, kuning:kuningArr, onCall, total, formation, active};
@@ -288,6 +297,122 @@ function EditZoneModal({tanggal, shift, assignment, zoneOvr, onSave, onClose}) {
   );
 }
 
+// ===== EDIT ON CALL MODAL =====
+function EditOnCallModal({tanggal, shift, schedOvr, currentOnCallIds, pjNurse, onSave, onClose}) {
+  // All nurses who are on "L" today, excluding karu & ppja
+  const liburPool = NURSES_BASE
+    .filter(n => {
+      if (n.zona === "karu") return false;
+      if (n.zona === "ppja") return false;
+      if (pjNurse && n.id === pjNurse.id) return false;
+      return getRawShift(n, tanggal, schedOvr) === "L";
+    })
+    .sort((a, b) => b.id - a.id); // bottom-priority first (high ID first)
+
+  const [selected, setSelected] = useState(() => new Set(currentOnCallIds));
+
+  const toggle = (id) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectedList = liburPool.filter(n => selected.has(n.id));
+  const unselectedList = liburPool.filter(n => !selected.has(n.id));
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{background:"#1E293B",borderRadius:16,width:"100%",maxWidth:480,maxHeight:"90vh",overflow:"hidden",display:"flex",flexDirection:"column"}}>
+        {/* Header */}
+        <div style={{padding:"16px 20px",borderBottom:"1px solid #334155",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <div style={{color:"#F1F5F9",fontWeight:700,fontSize:16}}>📞 Edit On Call</div>
+            <div style={{color:"#64748B",fontSize:12}}>
+              Tgl {tanggal} · Shift {SHIFT_LABEL[shift]} · {selected.size} dipilih
+            </div>
+          </div>
+          <button onClick={onClose} style={{background:"#334155",border:"none",color:"#94A3B8",borderRadius:8,padding:"6px 12px",fontSize:13}}>✕</button>
+        </div>
+
+        {/* Info */}
+        <div style={{padding:"10px 20px",background:"#0C2A38",borderBottom:"1px solid #0EA5E9"}}>
+          <div style={{color:"#7DD3FC",fontSize:11}}>
+            💡 Prioritas otomatis: perawat dengan nomor urut paling bawah (ID besar) ditampilkan lebih dulu. Tap untuk centang/uncentang.
+          </div>
+        </div>
+
+        <div style={{overflowY:"auto",flex:1,padding:"12px 20px"}}>
+
+          {/* Selected */}
+          {selectedList.length > 0 && (
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:10,color:"#0EA5E9",fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",marginBottom:8}}>
+                ✅ Dipilih sebagai On Call ({selectedList.length})
+              </div>
+              {selectedList.map(n => (
+                <div key={n.id} onClick={() => toggle(n.id)}
+                  style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:10,marginBottom:5,
+                    background:"#0C2A38",cursor:"pointer",border:"1px solid #0EA5E9"}}>
+                  <div style={{background:"#0EA5E9",color:"#fff",borderRadius:6,width:28,height:28,
+                    display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:11,flexShrink:0}}>{n.id}</div>
+                  <div style={{flex:1}}>
+                    <div style={{color:"#E2E8F0",fontSize:13,fontWeight:500}}>{n.nama}</div>
+                    <div style={{color:"#475569",fontSize:10}}>{n.zona === "triase" ? "Triase" : n.zona === "merah" ? "Zona Merah" : "Zona Kuning"}</div>
+                  </div>
+                  <div style={{background:"#0EA5E9",color:"#fff",borderRadius:6,padding:"3px 8px",fontSize:11,fontWeight:700}}>ON CALL</div>
+                  <span style={{color:"#64748B",fontSize:12}}>✕</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Unselected */}
+          {unselectedList.length > 0 && (
+            <div>
+              <div style={{fontSize:10,color:"#475569",fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",marginBottom:8}}>
+                Perawat Libur — Tidak On Call ({unselectedList.length})
+              </div>
+              {unselectedList.map(n => (
+                <div key={n.id} onClick={() => toggle(n.id)}
+                  style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:10,marginBottom:5,
+                    background:"#0F172A",cursor:"pointer",border:"1px solid #1E293B"}}>
+                  <div style={{background:"#1E293B",color:"#64748B",borderRadius:6,width:28,height:28,
+                    display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:11,flexShrink:0}}>{n.id}</div>
+                  <div style={{flex:1}}>
+                    <div style={{color:"#94A3B8",fontSize:13}}>{n.nama}</div>
+                    <div style={{color:"#334155",fontSize:10}}>{n.zona === "triase" ? "Triase" : n.zona === "merah" ? "Zona Merah" : "Zona Kuning"}</div>
+                  </div>
+                  <span style={{color:"#334155",fontSize:18}}>+</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {liburPool.length === 0 && (
+            <div style={{color:"#475569",fontSize:13,fontStyle:"italic",textAlign:"center",padding:"24px 0"}}>
+              Tidak ada perawat yang libur hari ini
+            </div>
+          )}
+        </div>
+
+        <div style={{padding:"12px 20px",borderTop:"1px solid #334155",display:"flex",gap:10}}>
+          <button onClick={onClose}
+            style={{flex:1,background:"#334155",border:"none",color:"#94A3B8",borderRadius:10,padding:"12px 0",fontWeight:600,fontSize:14}}>
+            Batal
+          </button>
+          <button onClick={() => onSave([...selected])}
+            style={{flex:2,background:"#0EA5E9",border:"none",color:"#fff",borderRadius:10,padding:"12px 0",fontWeight:700,fontSize:14}}>
+            ✓ Simpan On Call
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ===== ZONA CARD =====
 function ZonaCard({title, icon, color, bgColor, nurses, ideal}) {
   const ok = nurses.length >= ideal;
@@ -325,33 +450,46 @@ function ZonaCard({title, icon, color, bgColor, nurses, ideal}) {
 function App() {
   const [tanggal, setTanggal] = useState(1);
   const [shift, setShift]     = useState("P");
-  const [showEditSched, setShowEditSched] = useState(false);
-  const [showEditZone,  setShowEditZone]  = useState(false);
-  const [schedOverrides, setSchedOverrides] = useState({});
-  const [zoneOverrides,  setZoneOverrides]  = useState({});
+  const [showEditSched,   setShowEditSched]   = useState(false);
+  const [showEditZone,    setShowEditZone]    = useState(false);
+  const [showEditOnCall,  setShowEditOnCall]  = useState(false);
+  const [schedOverrides,  setSchedOverrides]  = useState({});
+  const [zoneOverrides,   setZoneOverrides]   = useState({});
+  const [onCallOverrides, setOnCallOverrides] = useState({}); // {tanggal: {shift: [id,...]}}
 
-  const flatSchedOvr = schedOverrides[tanggal] || {};
-  const flatZoneOvr  = ((zoneOverrides[tanggal] || {})[shift]) || {};
+  const flatSchedOvr   = schedOverrides[tanggal] || {};
+  const flatZoneOvr    = ((zoneOverrides[tanggal] || {})[shift]) || {};
+  const flatOnCallOvr  = ((onCallOverrides[tanggal] || {})[shift]) ?? null; // null = use default
 
   const assignment = useMemo(
-    () => computeShift(tanggal, shift, flatSchedOvr, flatZoneOvr),
-    [tanggal, shift, JSON.stringify(flatSchedOvr), JSON.stringify(flatZoneOvr)]
+    () => computeShift(tanggal, shift, flatSchedOvr, flatZoneOvr, flatOnCallOvr),
+    [tanggal, shift, JSON.stringify(flatSchedOvr), JSON.stringify(flatZoneOvr), JSON.stringify(flatOnCallOvr)]
   );
 
   function handleSaveSched(local) {
     setSchedOverrides(p => ({...p,[tanggal]:local}));
     setZoneOverrides(p => {const n={...p}; delete n[tanggal]; return n;});
+    setOnCallOverrides(p => {const n={...p}; delete n[tanggal]; return n;});
     setShowEditSched(false);
   }
   function handleSaveZone(local) {
     setZoneOverrides(p => ({...p,[tanggal]:{...(p[tanggal]||{}),[shift]:local}}));
     setShowEditZone(false);
   }
+  function handleSaveOnCall(ids) {
+    setOnCallOverrides(p => ({...p,[tanggal]:{...(p[tanggal]||{}),[shift]:ids}}));
+    setShowEditOnCall(false);
+  }
 
-  const hasSchedOvr = !!schedOverrides[tanggal];
-  const hasZoneOvr  = Object.keys(flatZoneOvr).length > 0;
+  const hasSchedOvr  = !!schedOverrides[tanggal];
+  const hasZoneOvr   = Object.keys(flatZoneOvr).length > 0;
+  const hasOnCallOvr = flatOnCallOvr !== null;
+
   const days = Array.from({length:30},(_,i)=>i+1);
   const {pj, triase, merah, kuning, onCall, total, formation} = assignment;
+
+  // Current on-call IDs for the modal
+  const currentOnCallIds = hasOnCallOvr ? flatOnCallOvr : assignment.onCall.map(n => n.id);
 
   return (
     <div style={{fontFamily:"'Segoe UI',Arial,sans-serif",background:"#0F172A",minHeight:"100vh",paddingBottom:48}}>
@@ -361,6 +499,17 @@ function App() {
       )}
       {showEditZone && (
         <EditZoneModal tanggal={tanggal} shift={shift} assignment={assignment} zoneOvr={flatZoneOvr} onSave={handleSaveZone} onClose={() => setShowEditZone(false)} />
+      )}
+      {showEditOnCall && (
+        <EditOnCallModal
+          tanggal={tanggal}
+          shift={shift}
+          schedOvr={flatSchedOvr}
+          currentOnCallIds={currentOnCallIds}
+          pjNurse={pj}
+          onSave={handleSaveOnCall}
+          onClose={() => setShowEditOnCall(false)}
+        />
       )}
 
       {/* Header */}
@@ -384,16 +533,17 @@ function App() {
             {days.map(d => {
               const hasS = !!schedOverrides[d];
               const hasZ = !!(zoneOverrides[d] && Object.keys(zoneOverrides[d]).length);
+              const hasO = !!(onCallOverrides[d] && Object.keys(onCallOverrides[d]).length);
               return (
                 <button key={d} onClick={() => setTanggal(d)} style={{
                   width:36,height:36,borderRadius:8,border:"none",fontSize:12,
                   fontWeight:tanggal===d?700:500,position:"relative",
-                  background:tanggal===d?"#3B82F6":hasS||hasZ?"#1A2A1A":"#1E293B",
-                  color:tanggal===d?"#fff":hasS||hasZ?"#4ADE80":"#94A3B8",
+                  background:tanggal===d?"#3B82F6":hasS||hasZ||hasO?"#1A2A1A":"#1E293B",
+                  color:tanggal===d?"#fff":hasS||hasZ||hasO?"#4ADE80":"#94A3B8",
                   boxShadow:tanggal===d?"0 0 0 2px #60A5FA":"none",
                 }}>
                   {d}
-                  {(hasS||hasZ) && <span style={{position:"absolute",top:2,right:2,width:5,height:5,background:"#4ADE80",borderRadius:"50%"}}/>}
+                  {(hasS||hasZ||hasO) && <span style={{position:"absolute",top:2,right:2,width:5,height:5,background:"#4ADE80",borderRadius:"50%"}}/>}
                 </button>
               );
             })}
@@ -415,13 +565,13 @@ function App() {
           ))}
         </div>
 
-        {/* Edit buttons */}
+        {/* Edit buttons — 3 buttons */}
         <div style={{display:"flex",gap:8,marginBottom:18}}>
           <button onClick={() => setShowEditSched(true)} style={{
             flex:1,padding:"11px 0",borderRadius:10,
             border:`1px solid ${hasSchedOvr?"#4ADE80":"#334155"}`,
             background:hasSchedOvr?"#1A3A1A":"#1E293B",
-            color:hasSchedOvr?"#4ADE80":"#94A3B8",fontSize:13,fontWeight:600,
+            color:hasSchedOvr?"#4ADE80":"#94A3B8",fontSize:12,fontWeight:600,
           }}>
             ✏️ Edit Jadwal
             {hasSchedOvr && <div style={{fontSize:10,opacity:0.8}}>Ada perubahan</div>}
@@ -430,10 +580,19 @@ function App() {
             flex:1,padding:"11px 0",borderRadius:10,
             border:`1px solid ${hasZoneOvr?"#FBBF24":"#334155"}`,
             background:hasZoneOvr?"#1A1400":"#1E293B",
-            color:hasZoneOvr?"#FBBF24":"#94A3B8",fontSize:13,fontWeight:600,
+            color:hasZoneOvr?"#FBBF24":"#94A3B8",fontSize:12,fontWeight:600,
           }}>
             🔀 Edit Zona
             {hasZoneOvr && <div style={{fontSize:10,opacity:0.8}}>Ada perubahan</div>}
+          </button>
+          <button onClick={() => setShowEditOnCall(true)} style={{
+            flex:1,padding:"11px 0",borderRadius:10,
+            border:`1px solid ${hasOnCallOvr?"#0EA5E9":"#334155"}`,
+            background:hasOnCallOvr?"#0C2A38":"#1E293B",
+            color:hasOnCallOvr?"#38BDF8":"#94A3B8",fontSize:12,fontWeight:600,
+          }}>
+            📞 Edit On Call
+            {hasOnCallOvr && <div style={{fontSize:10,opacity:0.8}}>Ada perubahan</div>}
           </button>
         </div>
 
@@ -495,18 +654,21 @@ function App() {
         <ZonaCard title="Zona Kuning" icon="🟡" color="#D97706" bgColor="#1A1000" nurses={kuning} ideal={formation.kuning} />
 
         {/* On Call */}
-        <div style={{background:"#1E293B",borderRadius:14,marginBottom:12,border:"1px solid #334155",overflow:"hidden"}}>
-          <div style={{background:"#0D1B2A",borderBottom:"2px solid #0EA5E9",padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{background:"#1E293B",borderRadius:14,marginBottom:12,border:`1px solid ${hasOnCallOvr?"#0EA5E9":"#334155"}`,overflow:"hidden"}}>
+          <div style={{background:"#0D1B2A",borderBottom:`2px solid ${hasOnCallOvr?"#0EA5E9":"#0EA5E9"}`,padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
               <span>📞</span>
               <span style={{color:"#0EA5E9",fontWeight:700,fontSize:14}}>On Call</span>
-              <span style={{color:"#475569",fontSize:11,fontStyle:"italic"}}>— sedang libur, siap dipanggil</span>
+              <span style={{color:"#475569",fontSize:11,fontStyle:"italic"}}>— siap dipanggil</span>
+              {hasOnCallOvr && (
+                <span style={{background:"#0C2A38",color:"#38BDF8",borderRadius:5,padding:"2px 7px",fontSize:10,fontWeight:700,border:"1px solid #0EA5E9"}}>EDITED</span>
+              )}
             </div>
             <span style={{color:"#0EA5E9",fontSize:13,fontWeight:700}}>{onCall.length} orang</span>
           </div>
           <div style={{padding:"10px 16px"}}>
             {onCall.length === 0
-              ? <div style={{color:"#475569",fontSize:12,fontStyle:"italic"}}>Tidak ada yang libur hari ini</div>
+              ? <div style={{color:"#475569",fontSize:12,fontStyle:"italic"}}>Tidak ada yang dipilih</div>
               : onCall.map((n,i) => (
                 <div key={n.id} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderBottom:i<onCall.length-1?"1px solid #0F172A":"none"}}>
                   <div style={{background:"#0C2A38",color:"#38BDF8",borderRadius:6,width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:12,flexShrink:0,border:"1px solid #0EA5E9"}}>{n.id}</div>
@@ -542,14 +704,15 @@ function App() {
         </div>
 
         {/* Reset bar */}
-        {(hasSchedOvr || hasZoneOvr) && (
+        {(hasSchedOvr || hasZoneOvr || hasOnCallOvr) && (
           <div style={{marginTop:12,background:"#1A2A1A",border:"1px solid #4ADE80",borderRadius:10,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div style={{color:"#4ADE80",fontSize:12,fontWeight:600}}>
-              ✓ Tgl {tanggal}: {[hasSchedOvr&&"jadwal",hasZoneOvr&&"zona"].filter(Boolean).join(" & ")} diubah
+              ✓ Tgl {tanggal}: {[hasSchedOvr&&"jadwal",hasZoneOvr&&"zona",hasOnCallOvr&&"on call"].filter(Boolean).join(", ")} diubah
             </div>
             <button onClick={() => {
               setSchedOverrides(p => {const n={...p}; delete n[tanggal]; return n;});
               setZoneOverrides(p => {const n={...p}; delete n[tanggal]; return n;});
+              setOnCallOverrides(p => {const n={...p}; delete n[tanggal]; return n;});
             }} style={{background:"none",border:"1px solid #4ADE80",color:"#4ADE80",borderRadius:7,padding:"4px 10px",fontSize:11}}>
               Reset Tgl {tanggal}
             </button>
