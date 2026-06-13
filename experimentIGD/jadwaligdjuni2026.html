@@ -95,10 +95,13 @@ function computeShift(tanggal, shift, schedOvr, zoneOvr) {
   const total = active.length;
   const formation = getFormation(total);
 
-  // On call = nurses with L today (excluding KARU), max 3
-  const onCall = NURSES_BASE.filter(n =>
-    n.zona !== "karu" && getRawShift(n, tanggal, schedOvr) === "L"
-  ).slice(0, 3);
+  const onCall = NURSES_BASE.filter(n => {
+  if (n.zona === "karu") return false;
+  if (n.zona === "ppja") return false;
+  if (pjNurse && n.id === pjNurse.id) return false;
+
+  return getRawShift(n, tanggal, schedOvr) === "L";
+}).slice(0, 3);
 
   // 1. Triase
   const triasePool = active.filter(n => n.zona === "triase");
