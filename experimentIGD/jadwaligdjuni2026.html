@@ -116,6 +116,14 @@ function computeShift(tanggal, shift, schedOvr, zoneOvr, onCallOvr, roleOvr) {
   }
   if (!triaseNurse && triasePool.length > 0) triaseNurse = triasePool[0];
 
+  const ro = roleOvr || {};
+
+if (ro.triase) {
+  const forcedTriase = active.find(n => n.id === ro.triase);
+  if (forcedTriase) {
+    triaseNurse = forcedTriase;
+  }
+}
   const usedIds = new Set();
   if (triaseNurse) usedIds.add(triaseNurse.id);
 
@@ -127,6 +135,15 @@ function computeShift(tanggal, shift, schedOvr, zoneOvr, onCallOvr, roleOvr) {
       if (f) { pjNurse = f; break; }
     }
   }
+ if (ro.pj) {
+  const forcedPJ = active.find(
+    n => n.id === ro.pj && n.id !== triaseNurse?.id
+  );
+
+  if (forcedPJ) {
+    pjNurse = forcedPJ;
+  }
+}
   if (pjNurse) usedIds.add(pjNurse.id);
 
   // 3. Remaining
@@ -406,6 +423,77 @@ function EditOnCallModal({tanggal, shift, schedOvr, currentOnCallIds, pjNurse, o
           <button onClick={() => onSave([...selected])}
             style={{flex:2,background:"#0EA5E9",border:"none",color:"#fff",borderRadius:10,padding:"12px 0",fontWeight:700,fontSize:14}}>
             ✓ Simpan On Call
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ // ===== EDIT PJ / TRIASE MODAL =====
+function EditRoleModal({tanggal, shift, assignment, roleOvr, onSave, onClose}) {
+  const [local, setLocal] = useState(() => ({
+    pj: roleOvr.pj || assignment.pj?.id || "",
+    triase: roleOvr.triase || assignment.triase?.id || ""
+  }));
+
+  const active = assignment.active.filter(n => n.zona !== "karu");
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{background:"#1E293B",borderRadius:16,width:"100%",maxWidth:460,overflow:"hidden"}}>
+        <div style={{padding:"16px 20px",borderBottom:"1px solid #334155",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <div style={{color:"#F1F5F9",fontWeight:700,fontSize:16}}>👤 Edit PJ & Triase</div>
+            <div style={{color:"#64748B",fontSize:12}}>Tgl {tanggal} · Shift {SHIFT_LABEL[shift]}</div>
+          </div>
+          <button onClick={onClose} style={{background:"#334155",border:"none",color:"#94A3B8",borderRadius:8,padding:"6px 12px",fontSize:13}}>✕</button>
+        </div>
+
+        <div style={{padding:"16px 20px"}}>
+          <div style={{marginBottom:14}}>
+            <div style={{color:"#60A5FA",fontWeight:700,fontSize:12,marginBottom:6}}>Penanggung Jawab / PJ</div>
+            <select
+              value={local.pj}
+              onChange={e => setLocal(p => ({...p, pj: Number(e.target.value) || ""}))}
+              style={{width:"100%",background:"#0F172A",color:"#F1F5F9",border:"1px solid #334155",borderRadius:10,padding:"10px",fontSize:13}}
+            >
+              <option value="">Tidak ada PJ</option>
+              {active
+                .filter(n => n.id !== local.triase)
+                .map(n => (
+                  <option key={n.id} value={n.id}>
+                    {n.id}. {n.nama}
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          <div>
+            <div style={{color:"#10B981",fontWeight:700,fontSize:12,marginBottom:6}}>Petugas Triase</div>
+            <select
+              value={local.triase}
+              onChange={e => setLocal(p => ({...p, triase: Number(e.target.value) || ""}))}
+              style={{width:"100%",background:"#0F172A",color:"#F1F5F9",border:"1px solid #334155",borderRadius:10,padding:"10px",fontSize:13}}
+            >
+              <option value="">Tidak ada Triase</option>
+              {active
+                .filter(n => n.id !== local.pj)
+                .map(n => (
+                  <option key={n.id} value={n.id}>
+                    {n.id}. {n.nama}
+                  </option>
+                ))}
+            </select>
+          </div>
+        </div>
+
+        <div style={{padding:"12px 20px",borderTop:"1px solid #334155",display:"flex",gap:10}}>
+          <button onClick={onClose} style={{flex:1,background:"#334155",border:"none",color:"#94A3B8",borderRadius:10,padding:"12px 0",fontWeight:600,fontSize:14}}>
+            Batal
+          </button>
+          <button onClick={() => onSave(local)} style={{flex:2,background:"#2563EB",border:"none",color:"#fff",borderRadius:10,padding:"12px 0",fontWeight:700,fontSize:14}}>
+            ✓ Simpan
           </button>
         </div>
       </div>
@@ -753,7 +841,7 @@ const [roleOverrides, setRoleOverrides] = useState({});
        {(hasSchedOvr || hasZoneOvr || hasOnCallOvr || hasRoleOvr) && (
           <div style={{marginTop:12,background:"#1A2A1A",border:"1px solid #4ADE80",borderRadius:10,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div style={{color:"#4ADE80",fontSize:12,fontWeight:600}}>
-              ✓ Tgl {tanggal}: [hasSchedOvr&&"jadwal",hasZoneOvr&&"zona",hasOnCallOvr&&"on call",hasRoleOvr&&"PJ/Triase"].filter(Boolean).join(", ")} diubah
+             ✓ Tgl {tanggal}: {[hasSchedOvr&&"jadwal",hasZoneOvr&&"zona",hasOnCallOvr&&"on call",hasRoleOvr&&"PJ/Triase"].filter(Boolean).join(", ")} diubah
             </div>
             <button onClick={() => {
   setSchedOverrides(p => {const n={...p}; delete n[tanggal]; return n;});
