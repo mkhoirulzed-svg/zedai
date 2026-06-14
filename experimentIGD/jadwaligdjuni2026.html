@@ -100,7 +100,7 @@ function getDefaultOnCall(tanggal, shift, schedOvr, pjNurse) {
     .slice(0, 3);
 }
 
-function computeShift(tanggal, shift, schedOvr, zoneOvr, onCallOvr) {
+function computeShift(tanggal, shift, schedOvr, zoneOvr, onCallOvr, roleOvr) {
   const active = NURSES_BASE.filter(n =>
     n.zona !== "karu" && getRawShift(n, tanggal, schedOvr) === shift
   );
@@ -456,15 +456,25 @@ function App() {
   const [schedOverrides,  setSchedOverrides]  = useState({});
   const [zoneOverrides,   setZoneOverrides]   = useState({});
   const [onCallOverrides, setOnCallOverrides] = useState({}); // {tanggal: {shift: [id,...]}}
+ const [showEditRole, setShowEditRole] = useState(false);
+const [roleOverrides, setRoleOverrides] = useState({});
 
   const flatSchedOvr   = schedOverrides[tanggal] || {};
   const flatZoneOvr    = ((zoneOverrides[tanggal] || {})[shift]) || {};
   const flatOnCallOvr  = ((onCallOverrides[tanggal] || {})[shift]) ?? null; // null = use default
+ const flatRoleOvr = ((roleOverrides[tanggal] || {})[shift]) || {};
 
   const assignment = useMemo(
-    () => computeShift(tanggal, shift, flatSchedOvr, flatZoneOvr, flatOnCallOvr),
-    [tanggal, shift, JSON.stringify(flatSchedOvr), JSON.stringify(flatZoneOvr), JSON.stringify(flatOnCallOvr)]
-  );
+  () => computeShift(tanggal, shift, flatSchedOvr, flatZoneOvr, flatOnCallOvr, flatRoleOvr),
+  [
+    tanggal,
+    shift,
+    JSON.stringify(flatSchedOvr),
+    JSON.stringify(flatZoneOvr),
+    JSON.stringify(flatOnCallOvr),
+    JSON.stringify(flatRoleOvr)
+  ]
+);
 
   function handleSaveSched(local) {
     setSchedOverrides(p => ({...p,[tanggal]:local}));
@@ -484,6 +494,7 @@ function App() {
   const hasSchedOvr  = !!schedOverrides[tanggal];
   const hasZoneOvr   = Object.keys(flatZoneOvr).length > 0;
   const hasOnCallOvr = flatOnCallOvr !== null;
+ const hasRoleOvr = Object.keys(flatRoleOvr).length > 0;
 
   const days = Array.from({length:30},(_,i)=>i+1);
   const {pj, triase, merah, kuning, onCall, total, formation} = assignment;
@@ -511,6 +522,31 @@ function App() {
           onClose={() => setShowEditOnCall(false)}
         />
       )}
+
+     {showEditRole && (
+  <EditRoleModal
+    tanggal={tanggal}
+    shift={shift}
+    assignment={assignment}
+    roleOvr={flatRoleOvr}
+    onSave={(local) => {
+      setRoleOverrides(p => ({
+        ...p,
+        [tanggal]: {
+          ...(p[tanggal] || {}),
+          [shift]: local
+        }
+      }));
+      setZoneOverrides(p => {
+        const n = {...p};
+        if (n[tanggal]) delete n[tanggal][shift];
+        return n;
+      });
+      setShowEditRole(false);
+    }}
+    onClose={() => setShowEditRole(false)}
+  />
+)}
 
       {/* Header */}
       <div style={{background:"linear-gradient(135deg,#1E3A5F,#0F172A)",padding:"22px 20px 18px",borderBottom:"1px solid #1E293B"}}>
@@ -594,6 +630,16 @@ function App() {
             📞 Edit On Call
             {hasOnCallOvr && <div style={{fontSize:10,opacity:0.8}}>Ada perubahan</div>}
           </button>
+         <button onClick={() => setShowEditRole(true)} style={{
+  flex:1,padding:"11px 0",borderRadius:10,
+  border:`1px solid ${Object.keys(flatRoleOvr).length ? "#60A5FA" : "#334155"}`,
+  background:Object.keys(flatRoleOvr).length ? "#10233F" : "#1E293B",
+  color:Object.keys(flatRoleOvr).length ? "#60A5FA" : "#94A3B8",
+  fontSize:12,fontWeight:600,
+}}>
+  👤 Edit PJ/Triase
+  {Object.keys(flatRoleOvr).length > 0 && <div style={{fontSize:10,opacity:0.8}}>Ada perubahan</div>}
+</button>
         </div>
 
         {/* Info bar */}
@@ -704,16 +750,17 @@ function App() {
         </div>
 
         {/* Reset bar */}
-        {(hasSchedOvr || hasZoneOvr || hasOnCallOvr) && (
+       {(hasSchedOvr || hasZoneOvr || hasOnCallOvr || hasRoleOvr) && (
           <div style={{marginTop:12,background:"#1A2A1A",border:"1px solid #4ADE80",borderRadius:10,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div style={{color:"#4ADE80",fontSize:12,fontWeight:600}}>
-              ✓ Tgl {tanggal}: {[hasSchedOvr&&"jadwal",hasZoneOvr&&"zona",hasOnCallOvr&&"on call"].filter(Boolean).join(", ")} diubah
+              ✓ Tgl {tanggal}: [hasSchedOvr&&"jadwal",hasZoneOvr&&"zona",hasOnCallOvr&&"on call",hasRoleOvr&&"PJ/Triase"].filter(Boolean).join(", ")} diubah
             </div>
             <button onClick={() => {
-              setSchedOverrides(p => {const n={...p}; delete n[tanggal]; return n;});
-              setZoneOverrides(p => {const n={...p}; delete n[tanggal]; return n;});
-              setOnCallOverrides(p => {const n={...p}; delete n[tanggal]; return n;});
-            }} style={{background:"none",border:"1px solid #4ADE80",color:"#4ADE80",borderRadius:7,padding:"4px 10px",fontSize:11}}>
+  setSchedOverrides(p => {const n={...p}; delete n[tanggal]; return n;});
+  setZoneOverrides(p => {const n={...p}; delete n[tanggal]; return n;});
+  setOnCallOverrides(p => {const n={...p}; delete n[tanggal]; return n;});
+  setRoleOverrides(p => {const n={...p}; delete n[tanggal]; return n;});
+}} style={{background:"none",border:"1px solid #4ADE80",color:"#4ADE80",borderRadius:7,padding:"4px 10px",fontSize:11}}>
               Reset Tgl {tanggal}
             </button>
           </div>
