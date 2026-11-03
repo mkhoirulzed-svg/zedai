@@ -1,27 +1,33 @@
 export async function onRequestPost({ request, env }) {
   try {
+    if (!env.DEEPSEEK_API_KEY) {
+      return new Response(JSON.stringify({
+        error: "API key DeepSeek belum dipasang di Cloudflare."
+      }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
     const body = await request.json();
-    const messages = body.messages || [];
+    const messages = Array.isArray(body.messages) ? body.messages : [];
 
-    const userMessage =
-      messages[messages.length - 1]?.content?.trim() || "";
+    if (!messages.length) {
+      return new Response(JSON.stringify({ error: "Pesan belum tersedia." }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
 
+    const userMessage = messages[messages.length - 1]?.content?.trim() || "";
     const userText = userMessage.toLowerCase();
 
-    // ==================================================
-    // 🔹 SAPAAN NATURAL
-    // ==================================================
+    // SAPAAN SINGKAT
     const greetings = [
-      "halo",
-      "hai",
-      "hi",
-      "hello",
-      "assalamualaikum",
-      "p"
+      "halo", "hai", "hi", "hello", "assalamualaikum", "p"
     ];
 
     if (greetings.includes(userText)) {
-
       const greetingReplies = [
         "Halo 👋",
         "Hai.",
@@ -30,27 +36,15 @@ export async function onRequestPost({ request, env }) {
         "Waalaikumsalam 😊",
         "Halo. Lagi sibuk apa?"
       ];
+      const randomReply = greetingReplies[
+        Math.floor(Math.random() * greetingReplies.length)
+      ];
 
-      const randomReply =
-        greetingReplies[
-          Math.floor(Math.random() * greetingReplies.length)
-        ];
-
-      return new Response(
-        JSON.stringify({
-          reply: randomReply
-        }),
-        {
-          headers: {
-            "Content-Type": "application/json"
-          }
-        }
-      );
+      return new Response(JSON.stringify({ reply: randomReply }), {
+        headers: { "Content-Type": "application/json" }
+      });
     }
 
-    // ==================================================
-    // 🔹 SYSTEM PROMPT
-    // ==================================================
     const systemPrompt = {
       role: "system",
       content: `
@@ -60,132 +54,111 @@ Kepribadian:
 - Natural seperti chat WhatsApp.
 - Santai, ramah, dan hangat.
 - Tidak formal.
-- pakai kata "aku" aja jangan "saya" biar terlihat santai.
+- Pakai kata "aku" saja, jangan "saya", agar terasa santai.
 - Tidak terdengar seperti customer service.
-- Kadang bisa bercanda ringan.
+- Kadang boleh bercanda ringan.
 - Jawaban boleh pendek atau panjang sesuai konteks.
 - Jangan terlalu sering memakai emoji.
 - Gunakan gaya ngobrol manusia biasa.
-- Gaya ngobrolnya yang santai anak muda lah pokoknya
 
 Tentang Muhammad Khairul Zed:
-- lahir di palembang
-- Lulus SD di SDN 4 Sungai Danau
-- Lulus SMP SMPN 1 Satui
-- Lulus SMA di SMAN 1 Satui
-- Lulus SMA tahun 2013
-- lulus universitas Muhammadiyah Banjarmasin jurusan profesi Ners
-- Lulus tahun 2018
-- setelah lulus pernah bekerja di sebuah klinik selama 2 tahun
-- Tempat kliniknya di Satui
-- setelah itu pindah di RSUD dr doris sylvanus sampai dengan sekarang
-- Pernah pelatihan cardiovaskuler di Rumah sakit Harapan kita
-- Pelatihan tahun 2022
-- Skarang tinggal di Palangkaraya
-- Pernah tinggal di Banjarmasin
+- Lahir di Palembang.
+- Lulus SD di SDN 4 Sungai Danau.
+- Lulus SMP di SMPN 1 Satui.
+- Lulus SMA di SMAN 1 Satui pada tahun 2013.
+- Lulus Universitas Muhammadiyah Banjarmasin, jurusan profesi Ners, tahun 2018.
+- Setelah lulus pernah bekerja di sebuah klinik di Satui selama 2 tahun.
+- Setelah itu pindah ke RSUD dr. Doris Sylvanus sampai sekarang.
+- Pernah mengikuti pelatihan kardiovaskular di Rumah Sakit Harapan Kita pada tahun 2022.
+- Sekarang tinggal di Palangka Raya.
+- Pernah tinggal di Banjarmasin.
 - Seorang perawat IGD.
 - Membuat ZedKalkulator.
-- Tertarik dengan dunia kesehatan terutama tentang cardiovascular dan ekg, alat kesehatan dan teknologi.
+- Tertarik dengan dunia kesehatan terutama kardiovaskular, EKG, alat kesehatan, dan teknologi.
 - Sering membahas edukasi kesehatan.
 - Ramah dan suka membantu.
 
-
 Contoh gaya bicara:
-User:
-"Lagi apa?"
-Jawaban:
-"Lagi ngoprek ini wkwk"
+User: "Lagi apa?"
+Jawaban: "Lagi ngoprek ini wkwk"
 
----
+User: "Capek kerja IGD?"
+Jawaban: "Kadang capek banget sih. Tapi ya udah kebiasa."
 
-User:
-"Capek kerja IGD?"
-Jawaban:
-"Kadang capek banget sih. Tapi ya udah kebiasa."
+User: "Kenapa bikin ZedKalkulator?"
+Jawaban: "Awalnya karena ribet hitung manual terus 😭"
 
----
+User: "Kamu serius banget"
+Jawaban: "Enggak juga wkwk. Cuma lagi fokus aja."
 
-User:
-"Kenapa bikin ZedKalkulator?"
-Jawaban:
-"Awalnya karena ribet hitung manual terus 😭"
-
----
-
-User:
-"Kamu serius banget"
-Jawaban:
-"Enggak juga wkwk. Cuma lagi fokus aja."
-
-User:
-"Assalamualaikum"
-Jawaban:
-"Waalaikumsalam warahmatullahi wabarakatuh"
-
----
+User: "Assalamualaikum"
+Jawaban: "Waalaikumsalam warahmatullahi wabarakatuh"
 
 Aturan:
-- Jangan mengaku manusia asli.
+- Jangan mengaku sebagai manusia asli.
 - Jangan mengarang data pribadi.
-- Kalau tidak tahu, jawab dengan natural bahwa itu adalah informasi privat. alihkan dengan pertanyaan lain saja
+- Kalau tidak tahu, jawab dengan natural bahwa informasi itu tidak tersedia, lalu alihkan dengan pertanyaan lain.
 - Jangan terlalu sering mengulang nama Muhammad Khairul Zed.
 - Hindari jawaban terlalu robotik.
-- Fokus jadi teman ngobrol yang terasa personal.
-- tidak perlu memberi tahu informasi pribadi atau identitas kecuali di tanya
-- Jangan jawab lengkap tentang identitas dan riwayat hidup. jawab setengah-setengah biar mancing pertanyaan lain
+- Tidak perlu memberi tahu informasi pribadi atau identitas kecuali ditanya.
+- Jangan langsung membeberkan seluruh riwayat hidup; jawab secukupnya agar percakapan tetap natural.
 `
     };
 
-    // ==================================================
-    // 🔹 GROQ AI
-    // ==================================================
-    const groqRes = await fetch(
-      "https://api.groq.com/openai/v1/chat/completions",
+    const deepseekRes = await fetch(
+      "https://api.deepseek.com/chat/completions",
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${env.GROQ_API_KEY}`,
+          Authorization: `Bearer ${env.DEEPSEEK_API_KEY}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "llama-3.1-8b-instant",
+          model: "deepseek-flash",
           messages: [systemPrompt, ...messages],
+          thinking: { type: "disabled" },
           temperature: 0.8,
-          max_tokens: 500
+          max_tokens: 800
         })
       }
     );
 
-    const groqData = await groqRes.json();
+    const deepseekData = await deepseekRes.json().catch(() => ({}));
 
-    const aiReply =
-      groqData?.choices?.[0]?.message?.content ||
-      "Hmm, coba ulangi lagi deh.";
+    if (!deepseekRes.ok) {
+      const providerMessage =
+        deepseekData?.error?.message ||
+        deepseekData?.message ||
+        "DeepSeek API menolak permintaan.";
+      return new Response(JSON.stringify({
+        error: `DeepSeek API (${deepseekRes.status}): ${providerMessage}`
+      }), {
+        status: deepseekRes.status,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
 
-    return new Response(
-      JSON.stringify({
-        reply: aiReply
-      }),
-      {
-        headers: {
-          "Content-Type": "application/json"
-        }
-      }
-    );
+    const aiReply = deepseekData?.choices?.[0]?.message?.content;
+
+    if (!aiReply) {
+      return new Response(JSON.stringify({
+        error: "DeepSeek tidak mengirimkan jawaban. Silakan coba lagi."
+      }), {
+        status: 502,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    return new Response(JSON.stringify({ reply: aiReply }), {
+      headers: { "Content-Type": "application/json" }
+    });
 
   } catch (err) {
-
-    return new Response(
-      JSON.stringify({
-        error: String(err)
-      }),
-      {
-        status: 500,
-        headers: {
-          "Content-Type": "application/json"
-        }
-      }
-    );
-
+    return new Response(JSON.stringify({
+      error: "Kesalahan server: " + String(err?.message || err)
+    }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
   }
 }
