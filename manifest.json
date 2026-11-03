@@ -1,0 +1,21 @@
+{
+  "id": "/",
+  "name": "ZED AI",
+  "short_name": "ZED AI",
+  "description": "Teman berpikir dan berkarya dari ZAIDA Labs.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f7f8fc",
+  "theme_color": "#f7f8fc",
+  "categories": ["productivity", "education", "utilities"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
