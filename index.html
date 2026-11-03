@@ -3,229 +3,244 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f7f8fc" />
   <title>ZED AI</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>.hidden { display: none; }</style>
+  <style>
+    * { box-sizing: border-box; }
+    :root { color-scheme: light; }
+    body { margin: 0; background: #f7f8fc; color: #202124; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .gemini-gradient { background: linear-gradient(115deg,#4285f4 0%,#8e63e6 48%,#d9659b 100%); }
+    .brand-text { background: linear-gradient(100deg,#4285f4,#9066df 58%,#d66b9e); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    .orb { position:relative; width:76px; height:76px; border-radius:50%; background:conic-gradient(from 20deg,#4285f4,#70c7f5,#a78bfa,#e88bb9,#4285f4); filter:drop-shadow(0 8px 22px #8a8ce955); animation:orbFloat 5s ease-in-out infinite; }
+    .orb:before { content:""; position:absolute; inset:5px; border-radius:50%; background:radial-gradient(circle at 35% 28%,#fff 0%,#eaf2ff 19%,#a9c9ff 43%,#8e83e9 72%,#d5a2dc 100%); }
+    .orb:after { content:""; position:absolute; inset:-7px; border-radius:50%; border:1px solid #8d9cf055; animation:orbit 8s linear infinite; }
+    .orb.thinking { animation:orbThink 1.2s ease-in-out infinite; }
+    .orb.thinking:after { border-color:#8b78e9aa; box-shadow:0 0 22px #8b78e966; }
+    @keyframes orbFloat { 0%,100%{transform:translateY(0) rotate(0)} 50%{transform:translateY(-7px) rotate(8deg)} }
+    @keyframes orbThink { 0%,100%{transform:scale(1);filter:drop-shadow(0 8px 20px #8a8ce955)} 50%{transform:scale(1.12);filter:drop-shadow(0 8px 30px #8a8ce9aa)} }
+    @keyframes orbit { to { transform:rotate(360deg) } }
+    .chat-scroll { scrollbar-width:thin; scrollbar-color:#d8dce8 transparent; }
+    .message { animation:rise .28s ease-out both; }
+    @keyframes rise { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    .ai-bubble { line-height:1.7; overflow-wrap:anywhere; }
+    .typing-dots span { display:inline-block;width:6px;height:6px;border-radius:50%;background:#8b78df;margin:0 2px;animation:dot 1s infinite ease-in-out; }
+    .typing-dots span:nth-child(2){animation-delay:.15s}.typing-dots span:nth-child(3){animation-delay:.3s}
+    @keyframes dot { 0%,60%,100%{transform:translateY(0);opacity:.45} 30%{transform:translateY(-5px);opacity:1} }
+    .composer { box-shadow:0 8px 35px #26345b12; transition:box-shadow .25s,border-color .25s; }
+    .composer:focus-within { border-color:#a9a0ef;box-shadow:0 8px 35px #7869d522,0 0 0 3px #8b78e91a; }
+    .suggestion { transition:transform .18s,background .18s,border-color .18s; }
+    .suggestion:active { transform:scale(.97); }
+    .send-button { background:linear-gradient(135deg,#527ff2,#9169df); transition:transform .2s,opacity .2s,box-shadow .2s; }
+    .send-button:not(:disabled):hover { transform:translateY(-1px);box-shadow:0 5px 16px #7869d555; }
+    .send-button:disabled { opacity:.45;cursor:not-allowed; }
+    #sideMenu { transition:transform .25s ease; }
+    @media (prefers-reduced-motion: reduce) { *,*:before,*:after {animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important} }
+  </style>
 </head>
+<body class="min-h-screen">
+  <div id="backdrop" class="fixed inset-0 bg-slate-950/30 z-40 hidden" onclick="toggleMenu()" aria-hidden="true"></div>
 
-<body class="font-sans bg-slate-100 min-h-screen flex justify-center p-3 sm:p-6">
-
-  <!-- BACKDROP -->
-  <div id="backdrop" class="fixed inset-0 bg-black/30 z-30 hidden" onclick="toggleMenu()"></div>
-
-  <!-- MENU SAMPING (SAMA DENGAN ZEDOSE TOOLS) -->
-  <aside
-    id="sideMenu"
-    class="fixed inset-y-0 left-0 z-40 w-64 max-w-full bg-teal-100 shadow-xl transform -translate-x-full transition-transform duration-200 ease-out"
-  >
-    <div class="p-4 border-b border-teal-200 flex items-center justify-between">
-      <div class="font-semibold text-slate-800 text-sm">Menu Aplikasi</div>
-      <button onclick="toggleMenu()" class="p-1 rounded-md hover:bg-teal-200">
-        <span class="block w-4 h-0.5 bg-slate-700 rotate-45 translate-y-[1px]"></span>
-        <span class="block w-4 h-0.5 bg-slate-700 -rotate-45 -translate-y-[1px]"></span>
-      </button>
+  <aside id="sideMenu" class="fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-white shadow-2xl -translate-x-full">
+    <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <img src="logo.png" alt="ZED" class="h-9 w-9 rounded-xl object-cover" onerror="this.style.display='none'">
+        <div><div class="font-semibold text-slate-800">ZEDose Tools</div><div class="text-xs text-slate-400">Ruang kerja digital</div></div>
+      </div>
+      <button onclick="toggleMenu()" class="h-9 w-9 rounded-full hover:bg-slate-100 text-xl text-slate-500" aria-label="Tutup menu">×</button>
     </div>
-
-    <nav class="p-4 text-sm space-y-1 text-slate-800">
-      <a href="https://zedkalkulator.site/infus.html" class="px-2 py-2 rounded-md hover:bg-teal-200 flex items-center">💧 Kalkulator Tetesan Infus</a>
-      <a href="https://zedkalkulator.site/index_NoBB.html" class="px-2 py-2 rounded-md hover:bg-teal-200 flex items-center">🧪 Syringe Pump - Tanpa BB</a>
-      <a href="https://zedkalkulator.site/index.html" class="px-2 py-2 rounded-md hover:bg-teal-200 flex items-center">🧪 Syringe Pump - Dengan BB</a>
-      <a href="https://zedkalkulator.site/anestesi.html" class="px-2 py-2 rounded-md hover:bg-teal-200 flex items-center">💤 EBV | ABL | MABL</a>
-      <a href="https://zedkalkulator.site/insulin.html" class="px-2 py-2 rounded-md hover:bg-teal-200 flex items-center">💊 Kalkulator Insulin</a>
-      <a href="https://zedkalkulator.site/kalkulatorpengenceranobat.html" class="px-2 py-2 rounded-md hover:bg-teal-200 flex items-center">💉 Kalkulator Pengenceran Obat</a>
-      <a href="https://zedkalkulator.site/about.html" class="px-2 py-2 rounded-md hover:bg-teal-200 flex items-center">ℹ️ Tentang Aplikasi</a>
-
-      <hr class="border-teal-300 my-2">
-
-      <a href="#" class="px-2 py-2 rounded-md bg-teal-200 font-medium flex items-center">🤖 ZED AI (beta)</a>
+    <nav class="p-4 text-sm space-y-1 text-slate-700">
+      <div class="px-3 pt-2 pb-2 text-[10px] uppercase tracking-[.16em] font-semibold text-slate-400">Aplikasi klinis</div>
+      <a href="https://zedkalkulator.site/infus.html" class="block px-3 py-3 rounded-xl hover:bg-blue-50">💧 Kalkulator Tetesan Infus</a>
+      <a href="https://zedkalkulator.site/index_NoBB.html" class="block px-3 py-3 rounded-xl hover:bg-blue-50">🧪 Syringe Pump - Tanpa BB</a>
+      <a href="https://zedkalkulator.site/index.html" class="block px-3 py-3 rounded-xl hover:bg-blue-50">🧪 Syringe Pump - Dengan BB</a>
+      <a href="https://zedkalkulator.site/anestesi.html" class="block px-3 py-3 rounded-xl hover:bg-blue-50">💤 EBV | ABL | MABL</a>
+      <a href="https://zedkalkulator.site/insulin.html" class="block px-3 py-3 rounded-xl hover:bg-blue-50">💊 Kalkulator Insulin</a>
+      <a href="https://zedkalkulator.site/kalkulatorpengenceranobat.html" class="block px-3 py-3 rounded-xl hover:bg-blue-50">💉 Pengenceran Obat</a>
+      <a href="https://zedkalkulator.site/about.html" class="block px-3 py-3 rounded-xl hover:bg-blue-50">ℹ️ Tentang Aplikasi</a>
+      <div class="my-3 border-t border-slate-100"></div>
+      <a href="#" class="block px-3 py-3 rounded-xl bg-gradient-to-r from-blue-50 to-violet-50 text-violet-700 font-semibold">✦ ZED AI <span class="text-[10px] ml-1 text-violet-500">BETA</span></a>
     </nav>
   </aside>
 
-  <!-- KONTEN -->
-  <div class="w-full max-w-2xl flex flex-col gap-3 relative">
-
-    <!-- HEADER -->
-    <header class="flex items-center justify-between mb-2">
-      <button onclick="toggleMenu()" class="p-2 rounded-lg hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
-        <span class="sr-only">Buka menu</span>
-        <div class="w-5 h-0.5 bg-slate-800 mb-1"></div>
-        <div class="w-5 h-0.5 bg-slate-800 mb-1"></div>
-        <div class="w-5 h-0.5 bg-slate-800"></div>
-      </button>
-
-      <div class="flex items-center gap-2">
-        <img src="logo.png" alt="Logo" class="h-7 w-7 rounded-md">
-        <span class="text-xs sm:text-sm text-slate-600 font-medium">ZEDose Tools</span>
+  <div class="min-h-screen max-w-5xl mx-auto flex flex-col px-4 sm:px-6">
+    <header class="h-16 flex items-center justify-between shrink-0">
+      <div class="flex items-center gap-3">
+        <button onclick="toggleMenu()" class="h-10 w-10 grid place-items-center rounded-full hover:bg-slate-200/70" aria-label="Buka menu">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+        <div class="flex items-center gap-2">
+          <img src="logo.png" alt="" class="h-7 w-7 rounded-lg object-cover" onerror="this.style.display='none'">
+          <span class="text-sm font-semibold tracking-tight text-slate-700">ZED AI</span>
+          <span class="text-[10px] font-medium px-2 py-1 rounded-full bg-violet-100 text-violet-700">BETA</span>
+        </div>
       </div>
+      <div class="hidden sm:flex items-center gap-2 text-xs text-slate-400"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> Asisten AI</div>
     </header>
 
-    <!-- CARD CHAT AI -->
-    <div class="flex flex-col h-[100dvh] relative">
+    <main class="flex-1 flex flex-col min-h-0">
+      <section id="welcome" class="flex-1 flex flex-col items-center justify-center text-center py-8 sm:py-12">
+        <div id="heroOrb" class="orb mb-8" aria-hidden="true"></div>
+        <p class="text-xs uppercase tracking-[.22em] text-slate-400 font-semibold mb-3">Teman berpikir dan berkarya</p>
+        <h1 class="text-4xl sm:text-5xl font-semibold tracking-tight mb-3"><span class="text-slate-800">Halo,</span> <span class="brand-text">ada yang bisa dibantu?</span></h1>
+        <p class="text-sm sm:text-base text-slate-500 max-w-lg leading-relaxed">Tanyakan ide, cari penjelasan, atau mulai sesuatu yang baru bersama ZED AI.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-2xl mt-9 text-left">
+          <button class="suggestion rounded-2xl border border-slate-200 bg-white/80 hover:bg-white hover:border-blue-200 p-4 text-sm text-slate-700" data-prompt="Bantu saya memahami suatu topik dengan penjelasan sederhana."><span class="block text-lg mb-2">💡</span><span class="font-medium">Jelaskan sebuah konsep</span><span class="block text-xs text-slate-400 mt-1">Uraikan topik yang rumit dengan sederhana</span></button>
+          <button class="suggestion rounded-2xl border border-slate-200 bg-white/80 hover:bg-white hover:border-violet-200 p-4 text-sm text-slate-700" data-prompt="Bantu saya menyusun ide dan membuat rencana langkah demi langkah."><span class="block text-lg mb-2">🧠</span><span class="font-medium">Kembangkan sebuah ide</span><span class="block text-xs text-slate-400 mt-1">Brainstorming dan susun rencana</span></button>
+          <button class="suggestion rounded-2xl border border-slate-200 bg-white/80 hover:bg-white hover:border-pink-200 p-4 text-sm text-slate-700" data-prompt="Bantu saya menulis atau memperbaiki sebuah teks."><span class="block text-lg mb-2">✍️</span><span class="font-medium">Bantu menulis</span><span class="block text-xs text-slate-400 mt-1">Rapikan tulisan atau mulai dari awal</span></button>
+          <button class="suggestion rounded-2xl border border-slate-200 bg-white/80 hover:bg-white hover:border-blue-200 p-4 text-sm text-slate-700" data-prompt="Berikan beberapa solusi kreatif untuk sebuah masalah."><span class="block text-lg mb-2">✨</span><span class="font-medium">Cari inspirasi</span><span class="block text-xs text-slate-400 mt-1">Temukan sudut pandang dan solusi baru</span></button>
+        </div>
+      </section>
 
-  <!-- HEADER OPSIONAL -->
-  <div class="p-3 text-center font-bold border-b">
-    ZedAI Chat
+      <section id="chat-box" class="hidden flex-1 min-h-0 overflow-y-auto chat-scroll py-6 sm:px-10" aria-live="polite"></section>
+
+      <section class="sticky bottom-0 pb-[max(14px,env(safe-area-inset-bottom))] pt-3 bg-gradient-to-t from-[#f7f8fc] via-[#f7f8fc] to-transparent">
+        <div class="composer max-w-3xl mx-auto rounded-[26px] border border-slate-200 bg-white p-2 sm:p-3">
+          <textarea id="user-input" rows="1" class="w-full resize-none bg-transparent outline-none px-3 pt-2 pb-2 text-[15px] text-slate-800 placeholder:text-slate-400 max-h-36" placeholder="Tanyakan apa saja kepada ZED AI..." aria-label="Pesan untuk ZED AI"></textarea>
+          <div class="flex items-center justify-between px-1">
+            <span class="text-[10px] sm:text-xs text-slate-400 pl-2">ZED AI dapat membuat kesalahan. Periksa kembali informasi penting.</span>
+            <button id="send-btn" class="send-button h-10 w-10 rounded-full text-white grid place-items-center" aria-label="Kirim pesan" disabled>
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+            </button>
+          </div>
+        </div>
+        <footer class="text-center text-[10px] text-slate-400 mt-3 leading-relaxed">Created by Muhammad Khairul Zed, S.Kep., Ners. · RSUD dr. Doris Sylvanus Kalteng</footer>
+      </section>
+    </main>
   </div>
 
-  <!-- AREA CHAT (scrollable) -->
-  <div
-  id="chat-box"
-  class="flex flex-col gap-2 flex-1 overflow-y-auto p-3 pb-24 bg-gray-50"
-></div>
-
-
-  <!-- AREA INPUT -->
-  <div
-  class="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto p-3
-         border-t bg-white flex gap-2 z-20">
-    <input
-      id="user-input"
-      class="flex-1 p-3 border rounded-xl outline-none"
-      placeholder="Ketik pesan..."
-    />
-    <button
-      id="send-btn"
-      class="px-4 bg-blue-600 text-white rounded-xl"
-    >
-      Kirim
-    </button>
-  </div>
-      </div>
-<footer class="text-[10px] text-center text-slate-500">
-      <div>Created by Muhammad Khairul Zed, S.Kep.,Ners</div>
-      <div>RSUD dr Doris Sylvanus Kalteng</div>
-    </footer>
-
-
-  <!-- SCRIPT -->
 <script>
-/* =========================
-   MENU SAMPING
-========================= */
 function toggleMenu() {
-  const menu = document.getElementById("sideMenu");
-  const backdrop = document.getElementById("backdrop");
-
-  menu.classList.toggle("-translate-x-full");
-  backdrop.classList.toggle("hidden");
+  document.getElementById("sideMenu").classList.toggle("-translate-x-full");
+  document.getElementById("backdrop").classList.toggle("hidden");
 }
-
-/* =========================
-   ELEMENT SELECTOR
-========================= */
 const chatBox = document.getElementById("chat-box");
+const welcome = document.getElementById("welcome");
 const userInput = document.getElementById("user-input");
 const sendBtn = document.getElementById("send-btn");
+const heroOrb = document.getElementById("heroOrb");
+let isSending = false;
+let messages = [{ role: "system", content: "Kamu adalah asisten yang membantu dan ramah." }];
 
-/* =========================
-   STATE CHAT
-========================= */
-let messages = [
-  { role: "system", content: "Kamu adalah asisten yang membantu dan ramah." }
-];
-
-/* =========================
-   UI CHAT
-========================= */
+function updateSendButton() {
+  sendBtn.disabled = isSending || !userInput.value.trim();
+}
+function resizeInput() {
+  userInput.style.height = "auto";
+  userInput.style.height = Math.min(userInput.scrollHeight, 144) + "px";
+  updateSendButton();
+}
+function showChat() {
+  welcome.classList.add("hidden");
+  chatBox.classList.remove("hidden");
+}
 function addMessage(role, text) {
-  const wrapper = document.createElement("div");
-  wrapper.className = role === "user" ? "text-right my-1" : "text-left my-1";
-
-  const bubble = document.createElement("span");
-  bubble.className =
-    role === "user"
-      ? "inline-block px-3 py-2 bg-blue-100 rounded-xl"
-      : "inline-block px-3 py-2 bg-slate-200 rounded-xl whitespace-pre-line";
-
-  bubble.textContent = text;
-
-  wrapper.appendChild(bubble);
-  chatBox.appendChild(wrapper);
-  chatBox.scrollTop = chatBox.scrollHeight;
-
-  return wrapper;
-}
-
-/* =========================
-   TYPEWRITER BOT
-========================= */
-async function typeWriter(text) {
-  const wrapper = document.createElement("div");
-  wrapper.className = "text-left my-1";
-
-  const bubble = document.createElement("span");
-  bubble.className =
-    "inline-block px-3 py-2 bg-slate-200 rounded-xl whitespace-pre-line";
-
-  wrapper.appendChild(bubble);
-  chatBox.appendChild(wrapper);
-
-  let i = 0;
-  function typing() {
-    if (i < text.length) {
-      bubble.textContent += text[i];
-      i++;
-      chatBox.scrollTop = chatBox.scrollHeight;
-      setTimeout(typing, 15);
-    }
+  const row = document.createElement("div");
+  row.className = "message flex mb-6 " + (role === "user" ? "justify-end" : "justify-start");
+  if (role === "assistant" || role === "bot") {
+    const avatar = document.createElement("div");
+    avatar.className = "orb !w-8 !h-8 shrink-0 mr-3 mt-1";
+    avatar.style.animationDuration = "5s";
+    row.appendChild(avatar);
+    const content = document.createElement("div");
+    content.className = "ai-bubble max-w-[min(82%,680px)] text-[14px] sm:text-[15px] text-slate-700 whitespace-pre-wrap pt-1";
+    content.textContent = text;
+    row.appendChild(content);
+  } else {
+    const bubble = document.createElement("div");
+    bubble.className = "max-w-[85%] sm:max-w-[75%] rounded-[22px] rounded-br-md bg-[#e9eaf6] px-4 py-3 text-[14px] sm:text-[15px] text-slate-800 whitespace-pre-wrap leading-relaxed";
+    bubble.textContent = text;
+    row.appendChild(bubble);
   }
-  typing();
+  chatBox.appendChild(row);
+  chatBox.scrollTop = chatBox.scrollHeight;
+  return row;
 }
-
-/* =========================
-   SEND MESSAGE
-========================= */
+function addTyping() {
+  const row = document.createElement("div");
+  row.className = "message flex items-center mb-6";
+  const avatar = document.createElement("div");
+  avatar.className = "orb thinking !w-8 !h-8 shrink-0 mr-3";
+  row.appendChild(avatar);
+  const dots = document.createElement("div");
+  dots.className = "typing-dots py-3";
+  dots.innerHTML = "<span></span><span></span><span></span>";
+  row.appendChild(dots);
+  chatBox.appendChild(row);
+  chatBox.scrollTop = chatBox.scrollHeight;
+  heroOrb.classList.add("thinking");
+  return row;
+}
+async function typeWriter(element, text) {
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduced || text.length > 2500) {
+    element.textContent = text;
+    chatBox.scrollTop = chatBox.scrollHeight;
+    return;
+  }
+  const chunk = 3;
+  for (let i = 0; i < text.length; i += chunk) {
+    element.textContent += text.slice(i, i + chunk);
+    chatBox.scrollTop = chatBox.scrollHeight;
+    await new Promise(resolve => setTimeout(resolve, 9));
+  }
+}
 async function sendMessage() {
   const text = userInput.value.trim();
-  if (!text) return;
-
+  if (!text || isSending) return;
+  isSending = true;
+  updateSendButton();
+  showChat();
   addMessage("user", text);
   messages.push({ role: "user", content: text });
-
   userInput.value = "";
+  resizeInput();
   userInput.focus();
-
-  const loading = addMessage("bot", "Sedang mengetik...");
-
+  const loading = addTyping();
   try {
     const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messages })
     });
-
+    if (!res.ok) throw new Error("HTTP " + res.status);
     const data = await res.json();
-    chatBox.removeChild(loading);
-
+    loading.remove();
+    heroOrb.classList.remove("thinking");
     if (data.error) {
-      addMessage("bot", "Terjadi kesalahan server.");
+      addMessage("assistant", "Terjadi kesalahan saat memproses pesan. Silakan coba lagi.");
       return;
     }
-
     const reply = data.reply || "(tidak ada jawaban)";
-    await typeWriter(reply);
+    const row = addMessage("assistant", "");
+    const content = row.querySelector(".ai-bubble");
+    await typeWriter(content, reply);
     messages.push({ role: "assistant", content: reply });
-
   } catch (err) {
     console.error(err);
-    chatBox.removeChild(loading);
-    addMessage("bot", "Gagal menghubungi server.");
+    loading.remove();
+    heroOrb.classList.remove("thinking");
+    addMessage("assistant", "Maaf, ZED AI belum dapat terhubung ke server. Periksa koneksi lalu coba lagi.");
+  } finally {
+    isSending = false;
+    updateSendButton();
   }
 }
-
-/* =========================
-   EVENT LISTENER
-========================= */
 sendBtn.addEventListener("click", sendMessage);
-
-userInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
+userInput.addEventListener("input", resizeInput);
+userInput.addEventListener("keydown", event => {
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
     sendMessage();
   }
 });
+document.querySelectorAll("[data-prompt]").forEach(button => {
+  button.addEventListener("click", () => {
+    userInput.value = button.dataset.prompt;
+    resizeInput();
+    userInput.focus();
+  });
+});
 </script>
-
-
 </body>
 </html>
