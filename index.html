@@ -216,7 +216,7 @@ async function sendMessage() {
   userInput.focus();
   const loading = addTyping();
   try {
-    const res = await fetch("https://zedai-pages.pages.dev/api/chat", {
+    const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messages })
