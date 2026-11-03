@@ -44,6 +44,12 @@
     .send-button:not(:disabled):hover { transform:translateY(-1px);box-shadow:0 5px 16px #7869d555; }
     .send-button:disabled { opacity:.45;cursor:not-allowed; }
     #sideMenu { transition:transform .25s ease; }
+    .history-item{display:flex;align-items:center;gap:8px;width:100%;padding:9px 10px;border-radius:11px;text-align:left;color:#475569;font-size:13px}
+    .history-item:hover,.history-item.active{background:#f1f2fa;color:#5b54a5}
+    .history-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+    .history-actions{opacity:0;color:#94a3b8;padding:2px 4px}
+    .history-item:hover .history-actions,.history-item.active .history-actions{opacity:1}
+
     @media (prefers-reduced-motion: reduce) { *,*:before,*:after {animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important} }
   </style>
 </head>
@@ -61,6 +67,10 @@
       <button onclick="startNewChat()" class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-gradient-to-r from-blue-50 to-violet-50 text-violet-700 font-semibold hover:from-blue-100 hover:to-violet-100">
         <span class="text-lg">＋</span> Percakapan baru
       </button>
+      <section class="px-3 pt-6">
+        <div class="flex items-center justify-between px-1 pb-2"><div class="text-[10px] uppercase tracking-[.16em] font-semibold text-slate-400">Riwayat chat</div><button onclick="startNewChat()" class="text-xs text-violet-600">＋ Baru</button></div>
+        <div id="chat-history" class="space-y-1 max-h-64 overflow-y-auto pr-1"><p class="px-2 py-3 text-xs text-slate-400">Belum ada percakapan</p></div>
+      </section>
       <div class="px-3 pt-7 pb-3 text-[10px] uppercase tracking-[.16em] font-semibold text-slate-400">Layanan AI</div>
       <button data-menu-prompt="Bantu saya menjawab pertanyaan berikut dengan jelas dan terstruktur: " class="w-full text-left flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-slate-50"><span class="w-9 h-9 rounded-xl bg-blue-50 grid place-items-center">✦</span><span><b class="block font-medium">Asisten umum</b><small class="text-xs text-slate-400">Tanya apa saja</small></span></button>
       <button data-menu-prompt="Bantu saya menulis, menyunting, atau memperbaiki tulisan berikut: " class="w-full text-left flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-slate-50"><span class="w-9 h-9 rounded-xl bg-pink-50 grid place-items-center">✍️</span><span><b class="block font-medium">Menulis & merangkum</b><small class="text-xs text-slate-400">Ide, draf, dan ringkasan</small></span></button>
@@ -126,12 +136,14 @@ function toggleMenu() {
 }
 function startNewChat() {
   if (isSending) return;
+  currentChatId = null;
   messages = [{ role: "system", content: "Kamu adalah asisten yang membantu dan ramah." }];
   chatBox.innerHTML = "";
   chatBox.classList.add("hidden");
   welcome.classList.remove("hidden");
   userInput.value = "";
   resizeInput();
+  renderHistory();
   userInput.focus();
   closeMenu();
 }
@@ -146,6 +158,74 @@ const sendBtn = document.getElementById("send-btn");
 const heroOrb = document.getElementById("heroOrb");
 let isSending = false;
 let messages = [{ role: "system", content: "Kamu adalah asisten yang membantu dan ramah." }];
+const STORAGE_KEY = "zedai_chat_history_v1";
+let conversations = loadConversations();
+let currentChatId = null;
+
+function loadConversations() {
+  try {
+    const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    return Array.isArray(data) ? data : [];
+  } catch (e) { console.warn("Riwayat tidak dapat dibaca", e); return []; }
+}
+function persistConversations() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations)); renderHistory(); }
+  catch (e) { console.error("Riwayat gagal disimpan", e); alert("Penyimpanan browser penuh. Hapus beberapa riwayat chat."); }
+}
+function makeChatId() { return "chat_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8); }
+function makeChatTitle(value) {
+  const clean = value.replace(/\s+/g," ").trim();
+  return clean.length > 42 ? clean.slice(0,42).trim() + "…" : clean;
+}
+function saveCurrentChat() {
+  const savedMessages = messages.filter(m => m.role === "user" || m.role === "assistant");
+  if (!savedMessages.length) return;
+  if (!currentChatId) currentChatId = makeChatId();
+  const old = conversations.find(c => c.id === currentChatId);
+  const first = savedMessages.find(m => m.role === "user");
+  const item = {id:currentChatId,title:old?.title || makeChatTitle(first?.content || "Percakapan baru"),updatedAt:Date.now(),messages:savedMessages};
+  conversations = [item,...conversations.filter(c => c.id !== currentChatId)];
+  persistConversations();
+}
+function renderHistory() {
+  const list = document.getElementById("chat-history");
+  if (!list) return;
+  list.innerHTML = "";
+  if (!conversations.length) {
+    const empty = document.createElement("p"); empty.className = "px-2 py-3 text-xs text-slate-400"; empty.textContent = "Belum ada percakapan"; list.appendChild(empty); return;
+  }
+  conversations.sort((a,b) => b.updatedAt-a.updatedAt);
+  conversations.forEach(chat => {
+    const row = document.createElement("div");
+    row.className = "history-item" + (chat.id === currentChatId ? " active" : "");
+    const title = document.createElement("button"); title.type="button"; title.className="history-title"; title.textContent=chat.title || "Percakapan baru"; title.title=title.textContent;
+    title.addEventListener("click",() => openConversation(chat.id));
+    const menu = document.createElement("button"); menu.type="button"; menu.className="history-actions"; menu.textContent="•••"; menu.setAttribute("aria-label","Opsi percakapan");
+    menu.addEventListener("click",event => {
+      event.stopPropagation();
+      const choice = prompt("Ketik R untuk ubah nama atau H untuk hapus:","R");
+      if (!choice) return;
+      if (choice.toLowerCase()==="r") {
+        const name=prompt("Nama percakapan:",chat.title);
+        if(name && name.trim()){chat.title=name.trim().slice(0,80);persistConversations();}
+      } else if(choice.toLowerCase()==="h" && confirm("Hapus percakapan ini?")) {
+        conversations=conversations.filter(c=>c.id!==chat.id);
+        if(currentChatId===chat.id) startNewChat();
+        persistConversations();
+      }
+    });
+    row.append(title,menu); list.appendChild(row);
+  });
+}
+function openConversation(id) {
+  if (isSending) return;
+  const chat=conversations.find(c=>c.id===id); if(!chat) return;
+  currentChatId=id;
+  messages=[{role:"system",content:"Kamu adalah asisten yang membantu dan ramah."},...chat.messages];
+  chatBox.innerHTML=""; showChat();
+  chat.messages.forEach(m=>addMessage(m.role,m.content));
+  renderHistory(); closeMenu();
+}
 
 function updateSendButton() {
   sendBtn.disabled = isSending || !userInput.value.trim();
@@ -218,6 +298,7 @@ async function sendMessage() {
   showChat();
   addMessage("user", text);
   messages.push({ role: "user", content: text });
+  saveCurrentChat();
   userInput.value = "";
   resizeInput();
   userInput.focus();
@@ -234,6 +315,8 @@ async function sendMessage() {
     if (!res.ok || data.error) {
       const detail = data.error || ("HTTP " + res.status);
       addMessage("assistant", "Ada kendala dari server: " + detail);
+      messages.push({ role: "assistant", content: "Ada kendala dari server: " + detail });
+      saveCurrentChat();
       return;
     }
     const reply = data.reply || "(tidak ada jawaban)";
@@ -241,6 +324,7 @@ async function sendMessage() {
     const content = row.querySelector(".ai-bubble");
     await typeWriter(content, reply);
     messages.push({ role: "assistant", content: reply });
+    saveCurrentChat();
   } catch (err) {
     console.error(err);
     loading.remove();
@@ -260,6 +344,7 @@ document.querySelectorAll("[data-menu-prompt]").forEach(button => {
     userInput.focus();
   });
 });
+renderHistory();
 sendBtn.addEventListener("click", sendMessage);
 userInput.addEventListener("input", resizeInput);
 userInput.addEventListener("keydown", event => {
