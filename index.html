@@ -221,12 +221,12 @@ async function sendMessage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messages })
     });
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     loading.remove();
     heroOrb.classList.remove("thinking");
-    if (data.error) {
-      addMessage("assistant", "Terjadi kesalahan saat memproses pesan. Silakan coba lagi.");
+    if (!res.ok || data.error) {
+      const detail = data.error || ("HTTP " + res.status);
+      addMessage("assistant", "Ada kendala dari server: " + detail);
       return;
     }
     const reply = data.reply || "(tidak ada jawaban)";
