@@ -1,48 +1,78 @@
+const ALLOWED_ORIGINS = [
+  "https://mkhoirulzed-svg.github.io"
+];
+
+function jsonResponse(data, status, origin) {
+  const headers = {
+    "Content-Type": "application/json",
+    "Vary": "Origin"
+  };
+
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    headers["Access-Control-Allow-Origin"] = origin;
+    headers["Access-Control-Allow-Methods"] = "POST, OPTIONS";
+    headers["Access-Control-Allow-Headers"] = "Content-Type";
+    headers["Access-Control-Max-Age"] = "86400";
+  }
+
+  return new Response(JSON.stringify(data), { status, headers });
+}
+
+export async function onRequestOptions({ request }) {
+  const origin = request.headers.get("Origin") || "";
+  if (!ALLOWED_ORIGINS.includes(origin)) {
+    return new Response(null, { status: 403 });
+  }
+
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": origin,
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Max-Age": "86400",
+      "Vary": "Origin"
+    }
+  });
+}
+
 export async function onRequestPost({ request, env }) {
+  const origin = request.headers.get("Origin") || "";
+
+  if (!ALLOWED_ORIGINS.includes(origin)) {
+    return jsonResponse({ error: "Origin tidak diizinkan." }, 403, origin);
+  }
+
   try {
     if (!env.DEEPSEEK_API_KEY) {
-      return new Response(JSON.stringify({
+      return jsonResponse({
         error: "API key DeepSeek belum dipasang di Cloudflare."
-      }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" }
-      });
+      }, 500, origin);
     }
 
     const body = await request.json();
     const messages = Array.isArray(body.messages) ? body.messages : [];
 
     if (!messages.length) {
-      return new Response(JSON.stringify({ error: "Pesan belum tersedia." }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" }
-      });
+      return jsonResponse({ error: "Pesan belum tersedia." }, 400, origin);
     }
 
     const userMessage = messages[messages.length - 1]?.content?.trim() || "";
     const userText = userMessage.toLowerCase();
 
-    // SAPAAN SINGKAT
     const greetings = [
       "halo", "hai", "hi", "hello", "assalamualaikum", "p"
     ];
 
     if (greetings.includes(userText)) {
       const greetingReplies = [
-        "Halo 👋",
-        "Hai.",
-        "Halo, ada apa?",
-        "Hai hehe",
-        "Waalaikumsalam 😊",
-        "Halo. Lagi sibuk apa?"
+        "Halo 👋", "Hai.", "Halo, ada apa?", "Hai hehe",
+        "Waalaikumsalam 😊", "Halo. Lagi sibuk apa?"
       ];
       const randomReply = greetingReplies[
         Math.floor(Math.random() * greetingReplies.length)
       ];
-
-      return new Response(JSON.stringify({ reply: randomReply }), {
-        headers: { "Content-Type": "application/json" }
-      });
+      return jsonResponse({ reply: randomReply }, 200, origin);
     }
 
     const systemPrompt = {
@@ -78,22 +108,6 @@ Tentang Muhammad Khairul Zed:
 - Sering membahas edukasi kesehatan.
 - Ramah dan suka membantu.
 
-Contoh gaya bicara:
-User: "Lagi apa?"
-Jawaban: "Lagi ngoprek ini wkwk"
-
-User: "Capek kerja IGD?"
-Jawaban: "Kadang capek banget sih. Tapi ya udah kebiasa."
-
-User: "Kenapa bikin ZedKalkulator?"
-Jawaban: "Awalnya karena ribet hitung manual terus 😭"
-
-User: "Kamu serius banget"
-Jawaban: "Enggak juga wkwk. Cuma lagi fokus aja."
-
-User: "Assalamualaikum"
-Jawaban: "Waalaikumsalam warahmatullahi wabarakatuh"
-
 Aturan:
 - Jangan mengaku sebagai manusia asli.
 - Jangan mengarang data pribadi.
@@ -105,23 +119,20 @@ Aturan:
 `
     };
 
-    const deepseekRes = await fetch(
-      "https://api.deepseek.com/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${env.DEEPSEEK_API_KEY}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: "deepseek-flash",
-          messages: [systemPrompt, ...messages],
-          thinking: { type: "disabled" },
-          temperature: 0.8,
-          max_tokens: 800
-        })
-      }
-    );
+    const deepseekRes = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.DEEPSEEK_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "deepseek-flash",
+        messages: [systemPrompt, ...messages],
+        thinking: { type: "disabled" },
+        temperature: 0.8,
+        max_tokens: 800
+      })
+    });
 
     const deepseekData = await deepseekRes.json().catch(() => ({}));
 
@@ -130,35 +141,23 @@ Aturan:
         deepseekData?.error?.message ||
         deepseekData?.message ||
         "DeepSeek API menolak permintaan.";
-      return new Response(JSON.stringify({
+      return jsonResponse({
         error: `DeepSeek API (${deepseekRes.status}): ${providerMessage}`
-      }), {
-        status: deepseekRes.status,
-        headers: { "Content-Type": "application/json" }
-      });
+      }, deepseekRes.status, origin);
     }
 
     const aiReply = deepseekData?.choices?.[0]?.message?.content;
 
     if (!aiReply) {
-      return new Response(JSON.stringify({
+      return jsonResponse({
         error: "DeepSeek tidak mengirimkan jawaban. Silakan coba lagi."
-      }), {
-        status: 502,
-        headers: { "Content-Type": "application/json" }
-      });
+      }, 502, origin);
     }
 
-    return new Response(JSON.stringify({ reply: aiReply }), {
-      headers: { "Content-Type": "application/json" }
-    });
-
+    return jsonResponse({ reply: aiReply }, 200, origin);
   } catch (err) {
-    return new Response(JSON.stringify({
+    return jsonResponse({
       error: "Kesalahan server: " + String(err?.message || err)
-    }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" }
-    });
+    }, 500, origin);
   }
 }
