@@ -11,6 +11,8 @@
     :root { color-scheme: light; }
     body { margin: 0; background: #f7f8fc; color: #202124; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     .gemini-gradient { background: linear-gradient(115deg,#4285f4 0%,#8e63e6 48%,#d9659b 100%); }
+    .zaida-mark { width:36px;height:36px;border-radius:12px;display:grid;place-items:center;color:#fff;font-size:19px;font-weight:800;background:linear-gradient(135deg,#4285f4,#22c7d7 55%,#9365e8);box-shadow:0 5px 16px #6d8fe544; }
+    .brand-word { font-weight:750;letter-spacing:-.035em;background:linear-gradient(100deg,#3978ed,#17aeca 55%,#9365e8);-webkit-background-clip:text;background-clip:text;color:transparent; }
     .brand-text { background: linear-gradient(100deg,#4285f4,#9066df 58%,#d66b9e); -webkit-background-clip:text; background-clip:text; color:transparent; }
     .orb { position:relative; width:76px; height:76px; border-radius:50%; background:conic-gradient(from 20deg,#4285f4,#70c7f5,#a78bfa,#e88bb9,#4285f4); filter:drop-shadow(0 8px 22px #8a8ce955); animation:orbFloat 5s ease-in-out infinite; }
     .orb:before { content:""; position:absolute; inset:5px; border-radius:50%; background:radial-gradient(circle at 35% 28%,#fff 0%,#eaf2ff 19%,#a9c9ff 43%,#8e83e9 72%,#d5a2dc 100%); }
@@ -40,27 +42,28 @@
 </head>
 <body class="min-h-screen">
   <div id="backdrop" class="fixed inset-0 bg-slate-950/30 z-40 hidden" onclick="toggleMenu()" aria-hidden="true"></div>
-
-  <aside id="sideMenu" class="fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-white shadow-2xl -translate-x-full">
+  <aside id="sideMenu" class="fixed inset-y-0 left-0 z-50 w-80 max-w-[88vw] bg-white shadow-2xl -translate-x-full flex flex-col">
     <div class="p-5 border-b border-slate-100 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <img src="logo.png" alt="ZED" class="h-9 w-9 rounded-xl object-cover" onerror="this.style.display='none'">
-        <div><div class="font-semibold text-slate-800">ZEDose Tools</div><div class="text-xs text-slate-400">Ruang kerja digital</div></div>
+        <div class="zaida-mark">Z</div>
+        <div><div class="font-semibold text-slate-800">ZAIDA Labs</div><div class="text-xs text-slate-400">AI workspace</div></div>
       </div>
       <button onclick="toggleMenu()" class="h-9 w-9 rounded-full hover:bg-slate-100 text-xl text-slate-500" aria-label="Tutup menu">×</button>
     </div>
-    <nav class="p-4 text-sm space-y-1 text-slate-700">
-      <div class="px-3 pt-2 pb-2 text-[10px] uppercase tracking-[.16em] font-semibold text-slate-400">Aplikasi klinis</div>
-      <a href="https://zedkalkulator.site/infus.html" class="block px-3 py-3 rounded-xl hover:bg-blue-50">💧 Kalkulator Tetesan Infus</a>
-      <a href="https://zedkalkulator.site/index_NoBB.html" class="block px-3 py-3 rounded-xl hover:bg-blue-50">🧪 Syringe Pump - Tanpa BB</a>
-      <a href="https://zedkalkulator.site/index.html" class="block px-3 py-3 rounded-xl hover:bg-blue-50">🧪 Syringe Pump - Dengan BB</a>
-      <a href="https://zedkalkulator.site/anestesi.html" class="block px-3 py-3 rounded-xl hover:bg-blue-50">💤 EBV | ABL | MABL</a>
-      <a href="https://zedkalkulator.site/insulin.html" class="block px-3 py-3 rounded-xl hover:bg-blue-50">💊 Kalkulator Insulin</a>
-      <a href="https://zedkalkulator.site/kalkulatorpengenceranobat.html" class="block px-3 py-3 rounded-xl hover:bg-blue-50">💉 Pengenceran Obat</a>
-      <a href="https://zedkalkulator.site/about.html" class="block px-3 py-3 rounded-xl hover:bg-blue-50">ℹ️ Tentang Aplikasi</a>
-      <div class="my-3 border-t border-slate-100"></div>
-      <a href="#" class="block px-3 py-3 rounded-xl bg-gradient-to-r from-blue-50 to-violet-50 text-violet-700 font-semibold">✦ ZED AI <span class="text-[10px] ml-1 text-violet-500">BETA</span></a>
+    <nav class="p-4 text-sm text-slate-700 flex-1">
+      <button onclick="startNewChat()" class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-gradient-to-r from-blue-50 to-violet-50 text-violet-700 font-semibold hover:from-blue-100 hover:to-violet-100">
+        <span class="text-lg">＋</span> Percakapan baru
+      </button>
+      <div class="px-3 pt-7 pb-3 text-[10px] uppercase tracking-[.16em] font-semibold text-slate-400">Layanan AI</div>
+      <button data-menu-prompt="Bantu saya menjawab pertanyaan berikut dengan jelas dan terstruktur: " class="w-full text-left flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-slate-50"><span class="w-9 h-9 rounded-xl bg-blue-50 grid place-items-center">✦</span><span><b class="block font-medium">Asisten umum</b><small class="text-xs text-slate-400">Tanya apa saja</small></span></button>
+      <button data-menu-prompt="Bantu saya menulis, menyunting, atau memperbaiki tulisan berikut: " class="w-full text-left flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-slate-50"><span class="w-9 h-9 rounded-xl bg-pink-50 grid place-items-center">✍️</span><span><b class="block font-medium">Menulis & merangkum</b><small class="text-xs text-slate-400">Ide, draf, dan ringkasan</small></span></button>
+      <button data-menu-prompt="Bantu saya mempelajari topik ini secara bertahap, sertakan contoh: " class="w-full text-left flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-slate-50"><span class="w-9 h-9 rounded-xl bg-violet-50 grid place-items-center">📚</span><span><b class="block font-medium">Belajar & memahami</b><small class="text-xs text-slate-400">Penjelasan dan contoh</small></span></button>
+      <button data-menu-prompt="Mari brainstorming. Berikan beberapa ide kreatif untuk: " class="w-full text-left flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-slate-50"><span class="w-9 h-9 rounded-xl bg-amber-50 grid place-items-center">💡</span><span><b class="block font-medium">Ide & kreativitas</b><small class="text-xs text-slate-400">Cari inspirasi baru</small></span></button>
     </nav>
+    <div class="p-4 border-t border-slate-100">
+      <a href="mailto:mkhoirulzed@gmail.com?subject=Masukan%20ZED%20AI" class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-500 hover:bg-slate-50"><span>💬</span><span><b class="block text-sm font-medium text-slate-700">Bantuan & masukan</b><small class="text-xs">Hubungi ZAIDA Labs</small></span></a>
+      <div class="text-[10px] text-slate-400 px-3 pt-2">ZAIDA Labs · ZED AI Beta</div>
+    </div>
   </aside>
 
   <div class="min-h-screen max-w-5xl mx-auto flex flex-col px-4 sm:px-6">
@@ -70,9 +73,9 @@
           <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
         </button>
         <div class="flex items-center gap-2">
-          <img src="logo.png" alt="" class="h-7 w-7 rounded-lg object-cover" onerror="this.style.display='none'">
-          <span class="text-sm font-semibold tracking-tight text-slate-700">ZED AI</span>
-          <span class="text-[10px] font-medium px-2 py-1 rounded-full bg-violet-100 text-violet-700">BETA</span>
+          <div class="zaida-mark">Z</div>
+          <span class="brand-word text-sm">ZAIDA Labs</span>
+          <span class="text-[10px] font-medium px-2 py-1 rounded-full bg-violet-100 text-violet-700">ZED AI</span>
         </div>
       </div>
       <div class="hidden sm:flex items-center gap-2 text-xs text-slate-400"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> Asisten AI</div>
@@ -113,6 +116,21 @@
 function toggleMenu() {
   document.getElementById("sideMenu").classList.toggle("-translate-x-full");
   document.getElementById("backdrop").classList.toggle("hidden");
+}
+function startNewChat() {
+  if (isSending) return;
+  messages = [{ role: "system", content: "Kamu adalah asisten yang membantu dan ramah." }];
+  chatBox.innerHTML = "";
+  chatBox.classList.add("hidden");
+  welcome.classList.remove("hidden");
+  userInput.value = "";
+  resizeInput();
+  userInput.focus();
+  closeMenu();
+}
+function closeMenu() {
+  document.getElementById("sideMenu").classList.add("-translate-x-full");
+  document.getElementById("backdrop").classList.add("hidden");
 }
 const chatBox = document.getElementById("chat-box");
 const welcome = document.getElementById("welcome");
@@ -226,6 +244,15 @@ async function sendMessage() {
     updateSendButton();
   }
 }
+document.querySelectorAll("[data-menu-prompt]").forEach(button => {
+  button.addEventListener("click", () => {
+    if (isSending) return;
+    userInput.value = button.dataset.menuPrompt;
+    resizeInput();
+    closeMenu();
+    userInput.focus();
+  });
+});
 sendBtn.addEventListener("click", sendMessage);
 userInput.addEventListener("input", resizeInput);
 userInput.addEventListener("keydown", event => {
