@@ -1,5 +1,7 @@
 const ALLOWED_ORIGINS = [
-  "https://mkhoirulzed-svg.github.io"
+  "https://mkhoirulzed-svg.github.io",
+  "https://ai.zaidalabs.com",
+  "https://zedai-pages.pages.dev"
 ];
 
 function jsonResponse(data, status, origin) {
