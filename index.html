@@ -4,6 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#f7f8fc" />
+  <meta name="description" content="ZED AI — teman berpikir dan berkarya dari ZAIDA Labs." />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/icon.svg" />
   <title>ZED AI</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -269,5 +276,14 @@ document.querySelectorAll("[data-prompt]").forEach(button => {
   });
 });
 </script>
+  <script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(error => {
+      console.error("ZED AI Service Worker gagal didaftarkan:", error);
+    });
+  });
+}
+  </script>
 </body>
 </html>
